@@ -223,8 +223,8 @@ the relocated table) must pass on both. Each effects build also runs its base su
 | Regression: Trap Hole still destroys Summoned Skull; Tribute to The Doomed still destroys Blue-Eyes | pass | pass |
 
 In God-free library states, from the title screen through a full player and CPU turn, EWRAM is identical with
-and without effects. IWRAM differs only in the audio DMA buffer and the stack. The effects builds haven't been
-tried in Delta yet.
+and without effects. IWRAM differs only in the audio DMA buffer and the stack. The user reports that the effects
+patch works in Delta on iOS.
 
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds

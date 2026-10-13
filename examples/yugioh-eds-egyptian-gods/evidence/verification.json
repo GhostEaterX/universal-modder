@@ -242,6 +242,11 @@
       "fresh work dir: all four variants built from scratch; gods.gba and gods-3t.gba reproduce 2b905f01... and 1cb038ed...; gods-fx.gba rebuilt to the same SHA-1",
       "showcase: a 34 s silent clip from the harness (Obelisk's wipe, Ra's payment, Slifer's drain), sent to the user rather than committed"
     ],
-    "real_device": "not yet tested in Delta"
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-13",
+      "result": "works (the user's report; which effects patch and which effects were tried were not stated)"
+    }
   }
 }
