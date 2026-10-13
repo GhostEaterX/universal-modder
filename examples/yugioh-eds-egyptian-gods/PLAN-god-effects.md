@@ -209,7 +209,7 @@ has to match byte for byte.
 ## 7. What it took
 One session:
 - one new unit of handlers and hooks (`src/god_effects.c`) and the relocated table (`god_effects_table.s`);
-- 22 anchored edits in 10 files (`scripts/patch_god_effects.py`), 13 more hooked functions than the build
-  without effects;
+- 22 anchored edits in 10 files (`scripts/patch_god_effects.py`): 15 more hooked functions than the
+  2-Tribute build (78), 13 more than the 3-Tribute build (86);
 - `hookbuild.py` support for units only the mod tree has, and `check_effect_table.py`;
-- 19 effect oracles plus the base suite on each effects build.
+- 18 effect oracles plus the base suite on each effects build.

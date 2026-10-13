@@ -106,5 +106,142 @@
       "date": "2026-10-13",
       "result": "works"
     }
+  },
+  "effects_builds": {
+    "decisions": "Obelisk: Tribute 2, destroy all opponent monsters, can't attack that turn; Slifer: ATK/DEF = 1000 x hand, opposing Attack Position summons lose 2000 ATK (destroyed at 0); Ra: on Normal Summon pay LP down to 100, ATK/DEF become the amount paid, and pay 1000 LP to destroy 1 monster; traits: a God's Normal Summon can't be answered, Obelisk can't be targeted, a God can't be Normal Set",
+    "builds": [
+      {
+        "patch": "gods-fx.bps",
+        "command": "scripts/build.sh <rom> <work> --effects",
+        "rom_sha1": "7e74a01ce70057d515dadd267ad7fdba93b89d99",
+        "patch_bytes": 44826,
+        "edited_units": 46,
+        "new_units": [
+          "god_effects",
+          "god_effects_table"
+        ],
+        "hooks": 78,
+        "stubs": 556,
+        "blob_bytes": 241288,
+        "control": "gods.gba",
+        "base_suite": "8/8 pass"
+      },
+      {
+        "patch": "gods-3t-fx.bps",
+        "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+        "rom_sha1": "471f4347758993363e2bbaac30167f1635575c43",
+        "patch_bytes": 50664,
+        "edited_units": 47,
+        "new_units": [
+          "god_effects",
+          "god_effects_table"
+        ],
+        "hooks": 86,
+        "stubs": 568,
+        "blob_bytes": 248196,
+        "control": "gods-3t.gba",
+        "base_suite": "15/15 pass"
+      }
+    ],
+    "effect_table": "gCardEffectsMod: 428 rows (426 original + Obelisk 1910 + Ra 1912) in the relocated code; check_effect_table.py: the 426 rows byte-identical to gCardEffects at 0x0819A9D4, sorted, Thumb pointers, all 11 readers of the old table hooked",
+    "oracles": [
+      {
+        "check": "Obelisk: Tribute 2, destroy the CPU's monsters",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Obelisk: no Activate with 1 other monster",
+        "effects_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "CPU: Obelisk clears the player's monsters",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: 3 cards in hand = 3000, beats 2500",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: 2 cards in hand = 2000, loses",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: an 1800 ATK summon is destroyed",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: a 2500 ATK summon loses 2000",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Ra: pay LP on Normal Summon, ATK 7900",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Ra: pay 1000 LP, destroy a monster",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: Ra pays LP, attacks with 7900",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: Ra destroys the player's monster",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: no Slifer with a 3-card hand",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: no Trap Hole on a God's Normal Summon",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: Obelisk can't be targeted",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: a God can't be Set",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "card text in the ROM",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "regression: Trap Hole still hits Summoned Skull",
+        "effects_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "regression: Tribute to The Doomed still works",
+        "effects_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "oracle_command": "tests/run_oracles.py <decomp> gods-fx.gba --effects --control gods.gba; tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --control gods-3t.gba: ALL OK for both",
+    "extra_checks": [
+      "God-free library states (title, main_menu, deck_edit, duel_start, duel_main1, duel_turn2): EWRAM and frame counts identical with and without effects for both pairs; IWRAM differs only in the stack and the audio DMA buffer",
+      "fresh work dir: all four variants built from scratch; gods.gba and gods-3t.gba reproduce 2b905f01... and 1cb038ed...; gods-fx.gba rebuilt to the same SHA-1",
+      "showcase: a 34 s silent clip from the harness (Obelisk's wipe, Ra's payment, Slifer's drain), sent to the user rather than committed"
+    ],
+    "real_device": "not yet tested in Delta"
   }
 }

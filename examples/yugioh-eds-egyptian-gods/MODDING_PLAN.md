@@ -76,10 +76,12 @@ Rejected routes:
   - Kaiba gets Obelisk for one Koumori Dragon;
   - Yami Yugi gets Slifer for Giant Soldier of Stone;
   - Marik gets Ra for one Dream Clown.
-- **Effects:** none in this version.
+- **Effects:** none in `gods.bps` and `gods-3t.bps`; the TCG effects in `gods-fx.bps` and `gods-3t-fx.bps`
+  (`PLAN-god-effects.md`).
 
 ## Open
 - **Optional next steps:**
   - ~~TCG-accurate three Tributes~~: done as a second build, `gods-3t.bps` (`PLAN-three-tributes.md`);
-  - God effects and card text: planned in `PLAN-god-effects.md` (a relocated effect table with three new
-    rows, plus cases in the stats, summon, menu and CPU code), waiting for the user's choices.
+  - ~~God effects and card text~~: done as the `--effects` builds (`PLAN-god-effects.md`);
+  - not built: the End Phase rule for a Special Summoned Obelisk or Slifer, and "Ra can't be Special
+    Summoned".

@@ -128,7 +128,8 @@ def fx_suite(tributes):
               {"C_ZONES": "0:817,1:1,2:1", "P_ZONES": "0:82,1:104", "C_HAND": "1,1,1,1,1"},
               r"P 0,0,0,0,0 C 817,0,0,\d+,\d+ LP 8000 8000 .*grave 2 2 links P\{\} C\{0\[ noatk\]\}"),
         check("Slifer: 3 cards in hand = 3000, beats 2500", E, "duel_turn2", 1800, BATTLE_KEYS,
-              {"P_ZONES": "0:818", "C_ZONES": "0:150", "P_HANDN": "3"}, r"P 818,0,0,0,0 C 0,0,0,0,0 LP 7900 7500"),
+              {"P_ZONES": "0:818", "C_ZONES": "0:150", "P_HANDN": "3"},
+              r"P 818,0,0,0,0 C 0,0,0,0,0 LP 7900 7500 hand 3 5 grave 1 1"),   # settled: LP count down first
         check("Slifer: 2 cards in hand = 2000, loses", E, "duel_turn2", 1800, BATTLE_KEYS,
               {"P_ZONES": "0:818", "C_ZONES": "0:150", "P_HANDN": "2"}, r"P 0,0,0,0,0 C 150,0,0,0,0 LP 7400 8000"),
         check("Slifer: an 1800 ATK summon is destroyed", E, "duel_main1", 1200, FISH_KEYS,

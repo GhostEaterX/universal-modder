@@ -103,7 +103,9 @@ Needs Linux, WSL or macOS with git and python3. Then:
 The build pins eds-decomp to commit `857002a` (2026-10-04). Starting from the same ROM, it reproduces the
 tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
-- `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`.
+- `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
+- `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
+- `gods-3t-fx.gba`: SHA-1 `471f4347758993363e2bbaac30167f1635575c43`.
 
 ### How the three-Tribute build works
 `scripts/patch_three_tributes.py` runs after `patch_source.py`. The engine already had a third Tribute slot
@@ -198,6 +200,32 @@ pass.
 In a duel without Gods, the two builds' EWRAM and frame timing are identical. The user also confirmed the
 three-Tribute build works in Delta on iOS.
 
+The effects builds have their own suite: `run_oracles.py ... --effects --control gods.gba` (add
+`--tributes 3` and use `gods-3t.gba` for the three-Tribute pair). Its control is the same build without
+effects. Every effect check must fail there, and the regressions (ordinary cards whose effects now go through
+the relocated table) must pass on both. Each effects build also runs its base suite.
+
+| Check (`gods-fx.gba`, `gods-3t-fx.gba`) | Effects build | Same build without effects |
+|---|---|---|
+| Obelisk: Tribute 2, all 3 CPU monsters destroyed, Obelisk can't attack | pass | fails (no Activate) |
+| Obelisk: no Activate with only 1 other monster | pass | pass |
+| CPU: Obelisk Tributes 2 and clears the player's Blue-Eyes and Celtic Guardian | pass | fails |
+| Slifer with 3 cards in hand beats Dark Magician by 500; with 2 it loses by 500 | pass | fails |
+| Slifer: a summoned 1800-ATK monster is destroyed; a 2500-ATK one drops to 500 | pass | fails |
+| Ra: Yes at 8000 LP leaves 100 LP and a 7900-ATK Ra | pass | fails |
+| Ra: pay 1000 LP, Blue-Eyes destroyed | pass | fails |
+| CPU: Ra pays down to 100 and hits Blue-Eyes with 7900; Ra's destroy clears Blue-Eyes | pass | fails |
+| CPU: no Slifer with a 3-card hand | pass | fails |
+| Trap Hole can't answer a God's Normal Summon | pass | fails (Trap Hole destroys it) |
+| Tribute to The Doomed can't target Obelisk | pass | fails (Obelisk destroyed) |
+| A God can't be Set | pass | fails (it is Set) |
+| Card text in the ROM says "Requires 2 / 3 Tributes ..." | pass | fails |
+| Regression: Trap Hole still destroys Summoned Skull; Tribute to The Doomed still destroys Blue-Eyes | pass | pass |
+
+In God-free library states, from the title screen through a full player and CPU turn, EWRAM is identical with
+and without effects. IWRAM differs only in the audio DMA buffer and the stack. The effects builds haven't been
+tried in Delta yet.
+
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
   Slifer.
@@ -211,9 +239,16 @@ Also checked:
 - **On a real device:** tested by the user in Delta on iOS: they summoned a God with two Tributes from the field, it showed 4000 ATK / 4000 DEF, and they attacked with it.
 
 ## Known limits
-- **No God effects:** no Obelisk wipe, no Slifer hand-size ATK.
+- **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
+- **Effects not built:** a Special Summoned Obelisk or Slifer doesn't go to the graveyard in the End Phase,
+  and Ra can still be Special Summoned (both TCG rules).
+- **Obelisk's immunity uses the game's shared target check.** So a Tribute picked through it, Cannon
+  Soldier's or Catapult Turtle's, can't pick Obelisk either.
+- **Slifer has 0 ATK with an empty hand,** as in the TCG. The CPU only summons it with 4 or more cards in hand.
+- **The CPU's effect choices are simple rules** (see "How the effects build works"), not tuned play.
+- **Link Battle:** both GBAs need the same patch.
 - **X000 in Deck Edit:** the deck list shows the Gods' ATK and DEF as `X000`, the game's own Divine display.
-  Card View and duels show 4000.
+  The duel's info bar shows the real values (4000, or Slifer's and Ra's current ones in the effects builds).
 - **A little lag:** the relocated code costs about 2 frames during the opening deal.
 
 ## Credits

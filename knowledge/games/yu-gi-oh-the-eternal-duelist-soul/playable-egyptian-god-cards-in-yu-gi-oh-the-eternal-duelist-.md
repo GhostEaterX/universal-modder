@@ -159,9 +159,9 @@ confirmed this build works in Delta on iOS too.
 - **Per-card memory:** zone links. Every engine reader ignores link kinds it doesn't know, so new kinds 14
   (Ra's paid LP) and 15 (a pad) are safe. The engine's existing kind 4 (ATK bonus) is removed in the End
   Phase, so it can't hold Ra's LP.
-- **Checks:** 19 effect oracles per build, each failing on the same build without effects (Card View text
+- **Checks:** 18 effect oracles per build, each failing on the same build without effects (Card View text
   included), plus the base suite on the effects build. In a God-free duel, EWRAM is identical with and
-  without effects.
+  without effects. Not yet tried in Delta.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
