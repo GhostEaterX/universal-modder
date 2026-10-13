@@ -80,6 +80,6 @@ Rejected routes:
 
 ## Open
 - **Optional next steps:**
-  - TCG-accurate three Tributes (`CanSummonFromHand`, the summon step, `AiHasTributesFor`);
+  - TCG-accurate three Tributes: planned in `PLAN-three-tributes.md`;
   - God effects: new rows in the 426-row `FindCardEffect` table, whose bound is hard-coded;
   - God card text.
