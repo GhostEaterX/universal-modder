@@ -168,3 +168,38 @@
 - **Card text:** fixed 480-byte records, so new text replaces the old in place.
 - **Not reachable from this container:** yugipedia.com (DNS). The TCG texts came from search results.
 - **Next:** the user picks the variants (Obelisk wipe or damage, Ra "become" or "gains", traits, builds).
+
+## 2026-10-13: God effects (third and fourth builds)
+- **User's decisions:**
+  - Obelisk: destroy all (TCG);
+  - Slifer: both effects;
+  - Ra: its ATK/DEF *become* the LP paid, and it keeps the 1000-LP destroy;
+  - the three recommended traits;
+  - effects on both Tribute rules: `gods-fx.bps` and `gods-3t-fx.bps`.
+- **Code:** our own unit `src/god_effects.c`, a relocated table `src/god_effects_table.s` (`.incbin` of the
+  decomp's built table, then Obelisk's and Ra's rows), and `scripts/patch_god_effects.py` (22 anchored edits
+  in 10 files).
+- **`hookbuild.py`:** links units that only the mod tree's `units.txt` lists. Everything they define must be
+  new.
+- **`check_effect_table.py`:** every build checks:
+  - the 426 copied rows against the original;
+  - the sort order and Thumb pointers;
+  - that all 11 functions reading the old table are hooked.
+- **Gotcha, a prompt that closes itself:** a text box opened on the frame of the A press that picked the
+  first Tribute sees that press and closes at once. Open the next prompt one frame later (a separate step).
+- **Gotcha, the link-removal quirk:** `RemoveLinksToZone` skips the link after any link it doesn't read as a
+  location. Ra's LP link and Slifer's drain link are each followed by a pad link (kind 15, `0xFFFF`), so a
+  later Equip's link is still removed.
+- **Gotcha, test hands:** the CPU played a Time Wizard from its real hand, lost the coin toss and wiped its own
+  field. CPU tests get a hand of plain monsters (`C_HAND`).
+- **Gotcha, turn 1 has no Battle Phase:** battle checks start from `duel_turn2`. B, then Enter Battle Phase,
+  then the monster's second command (Attack).
+- **Gotcha, the God menu lost Set:** in the effects builds a God's hand menu is Card View / Summon, so the God
+  summon keys take one RIGHT, not two. With the old keys the cursor wraps to Card View.
+- **Gotcha, shared assets:** `build.sh` re-extracts and re-applies the data on every run, and the card text
+  depends on `--text`. A dev rebuild that skips `build.sh` gets whatever text the vanilla tree last had.
+- **CPU Slifer:** with a 3-card hand the CPU traded three monsters for a 2000-ATK Slifer. `CanSummonFromHand`
+  now refuses the CPU's Slifer below 4 cards in hand.
+- **Regression:** in God-free library states (title through the CPU's turn 1), EWRAM is identical with and
+  without effects. IWRAM differs only in the audio DMA buffer and the stack. Trap Hole and Tribute to The
+  Doomed behave the same frame for frame on both.

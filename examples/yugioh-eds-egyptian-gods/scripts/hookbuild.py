@@ -16,6 +16,8 @@ hooks the edited code in instead:
      other edited units can call them. A Thumb BL can only reach 4 MiB, so every BL that leaves the blob
      goes through a generated long-branch stub. New read-only data (strings) rides along after the code,
      as long as the vanilla unit had none: nothing in the original layout can be pointing at it.
+     Units that only MOD's units.txt lists (src/<unit>.c, src/<unit>.s or data/<unit>.s) are new code and
+     data: they are linked whole, and everything they define must be new.
   4. The entry of each changed function in VANILLA's ROM is overwritten with a jump to its new copy
      (Thumb `bx pc` -> ARM `ldr ip, [pc]; bx ip`; r0-r3 and lr are untouched).
 
@@ -50,12 +52,34 @@ def run(*cmd, cwd=None):
     return r.stdout
 
 
-def units_of(tree):
+def listed_units(tree):
     out = []
     for line in (tree / "units.txt").read_text().splitlines():
         line = line.split("#")[0].strip()
-        if line and not line.startswith("@") and (tree / "src" / f"{line}.c").exists():
+        if line and not line.startswith("@"):
             out.append(line)
+    return out
+
+
+def units_of(tree):
+    """The C units of a tree, in link order."""
+    return [u for u in listed_units(tree) if (tree / "src" / f"{u}.c").exists()]
+
+
+def new_units(van, mod):
+    """{unit: object} for the units only MOD lists, with the object eds-decomp's Makefile builds for each."""
+    out = {}
+    known = set(listed_units(van))
+    for u in listed_units(mod):
+        if u in known:
+            continue
+        for src, obj in ((f"src/{u}.c", f"build/src/{u}.o"), (f"src/{u}.s", f"build/srcasm/{u}.o"),
+                         (f"data/{u}.s", f"build/data/{u}.o")):
+            if (mod / src).exists():
+                out[u] = mod / obj
+                break
+        else:
+            sys.exit(f"{u}: listed in MOD's units.txt but it has no src/{u}.c, src/{u}.s or data/{u}.s")
     return out
 
 
@@ -186,7 +210,10 @@ def main():
 
     # Edited units: the C differs, or a header change altered the compiled code of an untouched .c.
     units, hooks = [], {}   # hooks: unit -> [function]
+    vanilla_units = set(units_of(van))
     for u in units_of(mod):
+        if u not in vanilla_units:
+            continue
         edited = (van / "src" / f"{u}.c").read_bytes() != (mod / "src" / f"{u}.c").read_bytes()
         changed = changed_functions(van / "build" / "src" / f"{u}.o", mod / "build" / "src" / f"{u}.o")
         if edited or changed:
@@ -197,11 +224,19 @@ def main():
     nhooks = sum(map(len, hooks.values()))
     print(f"{len(units)} edited units, {nhooks} changed functions")
 
+    # New units (none for --null): linked whole.
+    extra = {} if args.null else new_units(van, mod)
+    if extra:
+        print(f"new units: {', '.join(extra)}")
+
     # New globals: defined by an edited unit but absent from VANILLA. They stay global in the blob.
     srcs = {u: (van if args.null else mod) / "build" / "src" / f"{u}.o" for u in units}
+    srcs.update(extra)
     new_globals = {}
-    for u in units:
+    for u in list(units) + list(extra):
         for name in defined_globals(srcs[u]):
+            if name in vsyms and u in extra:
+                sys.exit(f"new unit {u} defines {name}, which VANILLA already has")
             if name not in vsyms:
                 if name in new_globals:
                     sys.exit(f"new global {name} is defined by both {new_globals[name]} and {u}")
@@ -213,10 +248,11 @@ def main():
     # .rodata (strings) only if its vanilla object had none.
     stubs = set()
     rodata_units = []
-    for u in units:
+    linked = list(units) + list(extra)
+    for u in linked:
         src, dst = srcs[u], work / "objs" / f"{u}.o"
         if section_size(src, ".rodata"):
-            if section_size(van / "build" / "src" / f"{u}.o", ".rodata"):
+            if u not in extra and section_size(van / "build" / "src" / f"{u}.o", ".rodata"):
                 sys.exit(f"{u}: its vanilla object already has .rodata; this tool cannot move that")
             rodata_units.append(u)
         targets = bl_targets(src) - set(new_globals)
@@ -234,7 +270,7 @@ def main():
     (work / "stubs.s").write_text("\n".join(lines) + "\n")
     run("arm-none-eabi-as", "-mcpu=arm7tdmi", "-mthumb-interwork", "-o", str(work / "stubs.o"), str(work / "stubs.s"))
 
-    objs = " ".join(f"objs/{u}.o(.text)" for u in units)
+    objs = " ".join(f"objs/{u}.o(.text)" for u in linked)
     objs += "".join(f" objs/{u}.o(.rodata)" for u in rodata_units)
     (work / "hook.ld").write_text(f"""OUTPUT_ARCH(arm)
 SECTIONS

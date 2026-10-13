@@ -9,6 +9,16 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - `gods.bps`: a God takes the game's Level 7+ rule of two Tributes;
   - `gods-3t.bps`: a God takes **three**, the TCG rule. That holds for you, for the CPU and for Ultimate
     Offering's extra summon. Every other monster keeps the game's rules, so Blue-Eyes still takes two.
+- **Effects:** `gods-fx.bps` (two Tributes) and `gods-3t-fx.bps` (three) add the Gods' TCG effects, for you
+  and for the CPU, and their card text says so:
+  - **Obelisk the Tormentor:** Tribute 2 other monsters to destroy all monsters your opponent controls;
+    Obelisk can't attack that turn. Card effects can't target it.
+  - **Slifer the Sky Dragon:** its ATK and DEF are 1000 × the cards in your hand. When your opponent Normal
+    or Special Summons a monster in Attack Position, that monster loses 2000 ATK, and is destroyed if that
+    takes it to 0.
+  - **The Winged Dragon of Ra:** when you Normal Summon it, you may pay LP until you have 100; its ATK and
+    DEF become the amount paid. You can also pay 1000 LP to destroy 1 monster on the field.
+  - **All three:** their Normal Summon can't be answered (no Trap Hole on a God), and they can't be Set.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -19,10 +29,11 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - Marik gives up a Dream Clown for Ra.
 
   The CPU Tribute Summons the Gods when it needs a bigger monster.
-- **Not included:** the Gods' anime/TCG effects. They are effect-less monsters, as the original data
-  defines them.
+- **Without effects:** `gods.bps` and `gods-3t.bps` keep the Gods effect-less, as the original data defines
+  them.
 
-It ships as two patches for your own ROM, `gods.bps` and `gods-3t.bps`, and only works with the USA release (game code `AY5E`,
+It ships as four patches for your own ROM, `gods.bps`, `gods-3t.bps`, `gods-fx.bps` and `gods-3t-fx.bps`, and
+only works with the USA release (game code `AY5E`,
 SHA-1 `510fbba212aca9bab95ea12f8fd933e62ee34dea`). You have to dump the ROM from your own cartridge; no ROM is
 included or linked here.
 
@@ -30,7 +41,7 @@ included or linked here.
 1. **Back up your save first.** In Delta, long-press the game and export its save file.
 2. **Patch your ROM.**
    - Open [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) in Safari.
-   - Pick your `.gba` as the ROM and `gods.bps` (or `gods-3t.bps`) as the patch.
+   - Pick your `.gba` as the ROM and one of the four `.bps` files as the patch.
    - Tap **Apply patch** and save the result to Files.
    - The patch carries your ROM's checksum, so the patcher warns you if you pick the wrong ROM.
 3. **Import into Delta.** Tap **+**, choose Files and pick the patched `.gba`. It shows up as a separate game,
@@ -82,10 +93,12 @@ Needs Linux, WSL or macOS with git and python3. Then:
 2. Optionally, install [Flips](https://github.com/Alcaro/Flips) for the `.bps`.
 3. Run:
    ```sh
-   scripts/build.sh /path/to/your-eds-usa.gba ./work                 # work/gods.gba    + work/gods.bps
-   scripts/build.sh /path/to/your-eds-usa.gba ./work --tributes 3    # work/gods-3t.gba + work/gods-3t.bps
+   scripts/build.sh /path/to/your-eds-usa.gba ./work                           # gods.gba / .bps
+   scripts/build.sh /path/to/your-eds-usa.gba ./work --tributes 3              # gods-3t
+   scripts/build.sh /path/to/your-eds-usa.gba ./work --effects                 # gods-fx
+   scripts/build.sh /path/to/your-eds-usa.gba ./work --tributes 3 --effects    # gods-3t-fx
    ```
-   Each takes about a minute.
+   Each takes about a minute, and all four can share one work directory.
 
 The build pins eds-decomp to commit `857002a` (2026-10-04). Starting from the same ROM, it reproduces the
 tested ROMs byte for byte:
@@ -106,6 +119,51 @@ in its pending-summon record, unused. The Special Summon from hand even removed 
 
 The two new prompts are new strings in the relocated code, which `hookbuild.py` now allows when the unit
 had no read-only data of its own.
+
+### How the effects build works
+`scripts/patch_god_effects.py` runs last. It copies this mod's own code (`src/`) into the decomp as two new
+units, and makes 22 anchored edits that connect them to the engine. The plan with all the engine research is
+`PLAN-god-effects.md`.
+
+A card's behaviour in EDS is split in two:
+- **Its row in an effect table.** Five handlers decide whether it can be activated, check targets, pay
+  the cost, pick targets and resolve.
+- **`switch (card number)` cases across the engine** for everything else.
+
+```
+ Obelisk's Activate          Ra's Normal Summon          Slifer
+ (card menu / CPU step)      (summon executor)           (no chain effect)
+        │                           │                        │
+        ▼                           ▼                        ├─ ATK/DEF ──── GetZoneCardStats
+ CanActivateEffect ──┐       Chain_AddPending                │
+                     ▼              │                        └─ drain ────── SummonAction_Update
+          FindCardEffect (428 rows) ◀┘                                       (after every summon)
+                     │
+                     ▼
+          gCardEffectsMod: 426 original rows (copied from your ROM at build time) + Obelisk + Ra
+                     │
+                     ▼
+          prepare → chainA (cost) → chainB (targets) → the opponent may respond → resolve
+```
+
+The original table can't grow: other data starts right where it ends. So the build makes a new one in the
+relocated code: the decomp's own copy of the 426 original rows, built from your ROM, plus the two Gods' rows.
+A `#define` sends every reader of the old table to the new one, so `hookbuild.py` hooks all 11 of those
+functions automatically. `check_effect_table.py` then stops the build unless:
+- the 426 copied rows are byte for byte the original;
+- the table is sorted;
+- every function that read the old table is hooked.
+
+| Where | What the edits do |
+|---|---|
+| Effect table | Obelisk's and Ra's rows; `FindCardEffect` searches 428 rows |
+| Stats (`GetZoneCardStats`) | Slifer: 1000 × hand size; Ra: the LP paid, kept as a zone link that leaves with the card |
+| Normal Summon executors | queue Ra's summon trigger; Ultimate Offering's summon skips the position menu for a God |
+| After every summon (`SummonAction_Update`) | Slifer's drain; no response window for a God's Normal Summon |
+| Card menu | Activate for a face-up Obelisk or Ra; no Set for a God in the hand |
+| Target check (`CanCardTargetZone`) | Obelisk can't be targeted |
+| CPU | uses Obelisk when it clears more ATK than it Tributes, and Ra's destroy against a 2000+ ATK monster while it keeps more than 2000 LP; pays for Ra when that makes Ra stronger than 4000; summons Slifer only with 4+ cards in hand |
+| Card text | the Gods' text in Card View describes the effects (data, in place) |
 
 ## Verification
 These checks run in eds-decomp's headless mGBA 0.10.5 harness: `tests/run_oracles.py`, with the `.lua` setups

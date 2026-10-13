@@ -3,8 +3,17 @@
 **Goal:** Obelisk, Slifer and Ra get their card effects, for the player and the CPU, and the God cards' text
 describes them. Every other card plays exactly as before.
 
-**Status: plan only. Nothing is built.** The effect variants and traits below are waiting for the user's
-choices. Everything here was read in eds-decomp `857002a`.
+**Status: built.** `scripts/build.sh ... --effects` (with `--tributes 2` or `3`) gives `gods-fx.bps` and
+`gods-3t-fx.bps`; the oracles are in `tests/run_oracles.py --effects`. Everything here was read in eds-decomp
+`857002a`. Where the build differs from the plan, a *Built:* note says so.
+
+**Decisions (the user's):**
+- Obelisk: A, destroy all (TCG);
+- Slifer: both effects;
+- Ra: TCG, its ATK and DEF **become** the LP paid, and it keeps the 1000-LP destroy;
+- traits: the three recommended ones (no answer to a God's Normal Summon, Obelisk can't be targeted, a God
+  can't be Normal Set); not the End Phase one;
+- builds: effects on both Tribute rules.
 
 ## 1. How EDS runs a card's effect
 There is no single "effect" per card. A card's behaviour is split between one row in an effect table and
@@ -69,6 +78,10 @@ have 2 other monsters to Tribute.
 
 Alternative stats: 4000 + 1000 per card in hand. It is much stronger, so it isn't recommended.
 
+*Built:* Slifer needs no row in the effect table: neither effect is a chain effect. So the table has 428 rows
+(Obelisk and Ra), not 429. The CPU summons Slifer only with at least 4 cards in hand, so it stays at 3000 ATK
+or more (a check in `CanSummonFromHand` for player 1).
+
 ### The Winged Dragon of Ra
 | | Effect | Built from |
 |---|---|---|
@@ -80,13 +93,21 @@ Alternative stats: 4000 + 1000 per card in hand. It is much stronger, so it isn'
 The TCG prints Ra as `?`/`?`, so "become" gives TCG numbers. Because the payment is a choice, a player with
 little LP just answers No.
 
+*Built:*
+- Ra's two effects share one row; the handlers tell them apart by the chain entry's event
+  (`RESPONSE_SUMMONED` for the trigger).
+- The payment happens when the trigger resolves, with a Yes/No prompt, as Needle Ball does.
+- The destroy pays its 1000 LP once the target is picked (in `chainB`), so the "may it be activated?" check
+  still sees the LP before payment.
+- Obelisk's two Tributes are paid when its effect is activated (in `chainB`), as a cost.
+
 ### Shared God traits (optional, each one separate)
 | Trait (TCG) | Change | Recommended |
 |---|---|---|
 | Their Normal Summon can't be answered (no Trap Hole on a God) | skip the opponent's response window in `SummonAction_Update` for a God's Normal Summon | yes |
 | Obelisk can't be targeted by card effects | a `case` in `CanCardTargetZone`, next to Lord of D. It covers every effect that uses the shared target check; the oracles show whether some handler skips it | yes |
 | Can't be Normal Set | drop SET from the hand menu and from the CPU's set step for Gods | yes |
-| A Special Summoned Obelisk or Slifer goes to the graveyard in the End Phase | `SummonAction_Update` marks it with a zone link; the End Phase loop in `duel_cmd_turn.c` sends it | optional |
+| A Special Summoned Obelisk or Slifer goes to the graveyard in the End Phase | `SummonAction_Update` marks it with a zone link; the End Phase loop in `duel_cmd_turn.c` sends it | optional (not built) |
 | Ra can't be Special Summoned | many separate summon checks (Monster Reborn, Call of the Haunted…) | later, needs its own research |
 
 ## 3. How a new effect gets onto an existing card
@@ -129,8 +150,8 @@ This recipe works for any card, not just the Gods.
    473 characters), so `apply_gods.py` replaces the Gods' flavour text in place without moving anything. The
    text follows the build: "3 Tributes" in `gods-3t`, 2 in `gods`.
 7. **Toolkit:**
-   - `hookbuild.py --extra` compiles units that exist only in the mod tree (C and `.s`) with the decomp's
-     flags, and links them into the blob. Their globals are new, so they get no stubs.
+   - `hookbuild.py` links units that only the mod tree's `units.txt` lists (C or `.s`; the decomp's Makefile
+     compiles them with its own flags). Everything they define is new, so they get no stubs and no hooks.
    - A self-check fails the build unless the first 426 rows of `gCardEffectsMod` equal the original bytes at
      `0x0819A9D4`.
    - A `scripts/patch_god_effects.py` holds the anchored edits, like `patch_three_tributes.py`.
@@ -145,6 +166,11 @@ This recipe works for any card, not just the Gods.
  └───────────────────────────────────────────────────────────────┘
         ▲ 16-byte jump at each original entry; every other byte stays put
 ```
+
+*Built: the pad links.* `RemoveLinksToZone` skips the link after any link it doesn't read as a card location
+(an engine quirk). Without a fix, an Equip put on Ra or on a drained monster later would keep a stale link
+once the Equip is gone. So each new link is followed by a pad link (kind 15, value `0xFFFF`), which is the one
+that gets skipped.
 
 ## 4. Builds
 `build.sh --effects` adds the effects on top of either Tribute rule: `gods-fx.bps` (2 Tributes) and
@@ -180,16 +206,10 @@ has to match byte for byte.
 - **Partial immunity:** a few old handlers may not use `CanCardTargetZone`; the oracles and Card View
   wording stay honest about what is covered.
 
-## 7. Effort
-About two sessions:
-- about 8 new handlers;
-- about 12 edited functions;
-- the table relocation and `hookbuild --extra`;
-- about 10 oracles, the docs and a showcase clip.
-
-## Decisions (waiting for the user)
-1. Obelisk: **A** destroy all (TCG) or **B** 4000 damage (anime)?
-2. Slifer: both effects as listed (TCG)?
-3. Ra: TCG with "become", the "gains" alternative, or the anime Tribute sum? Keep the 1000-LP destroy?
-4. Traits: which of the shared traits?
-5. Builds: effects on both Tribute rules, or only one?
+## 7. What it took
+One session:
+- one new unit of handlers and hooks (`src/god_effects.c`) and the relocated table (`god_effects_table.s`);
+- 22 anchored edits in 10 files (`scripts/patch_god_effects.py`), 13 more hooked functions than the build
+  without effects;
+- `hookbuild.py` support for units only the mod tree has, and `check_effect_table.py`;
+- 19 effect oracles plus the base suite on each effects build.

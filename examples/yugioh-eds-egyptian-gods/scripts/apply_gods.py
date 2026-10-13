@@ -3,6 +3,7 @@
 
     python3 apply_gods.py <eds-decomp checkout>          # apply (idempotent)
     python3 apply_gods.py <eds-decomp checkout> --check  # report only, change nothing
+    python3 apply_gods.py <eds-decomp checkout> --text 3 # also the effect text, for a 3-Tribute build
 
 Run it after `tools/dr make setup`, then `tools/dr make`. No game data lives in this script; it only
 names card numbers and rewrites the extracted CSV/JSON files in place:
@@ -10,6 +11,9 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
   - cards/passwords.csv                     their TCG passwords, so the password screen hands them out
   - tables/rodata2/card_copy_limits.json    ban list: 0 copies -> GOD_COPY_LIMIT
   - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God
+  - cards/descriptions.json                 with --text 2|3 (the effects builds): the Gods' effect text in
+                                            place of their flavour text, saying 2 or 3 Tributes. Each text
+                                            is a fixed 480-byte record, so nothing moves
 
 The C side (Divine counts as a monster type, Obelisk stops being a Ritual) is patches/eds-decomp.diff.
 Stdlib only; Python 3.8+.
@@ -30,6 +34,19 @@ GODS = {  # card number -> (card ID, name, TCG password)
 GOD_ATK = GOD_DEF = 4000
 GOD_LEVEL = 10
 GOD_COPY_LIMIT = 1
+SUMMON_TEXT = ("Requires {n} Tributes to Normal Summon (cannot be Normal Set). When Normal Summoned, cards and "
+               "effects cannot be activated. ")
+EFFECT_TEXT = {  # what patch_god_effects.py implements
+    OBELISK: "Neither player can target this card with card effects. You can Tribute 2 other monsters to "
+             "destroy all monsters your opponent controls. This card cannot attack the turn this effect is "
+             "activated.",
+    SLIFER: "This card's ATK and DEF are 1000 x the number of cards in your hand. If your opponent Normal or "
+            "Special Summons a monster in Attack Position: it loses 2000 ATK, then if its ATK has been "
+            "reduced to 0 as a result, destroy it.",
+    RA: "When this card is Normal Summoned, you can pay Life Points so that you only have 100 left: its ATK "
+        "and DEF become the amount paid. You can pay 1000 Life Points to destroy 1 monster on the field.",
+}
+TEXT_RECORD = 0x1E0
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
 DECK_SWAPS = {
@@ -99,6 +116,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("decomp", type=Path, help="eds-decomp checkout with assets/ extracted")
     ap.add_argument("--check", action="store_true", help="report what would change, write nothing")
+    ap.add_argument("--text", type=int, choices=(2, 3), help="write the effect text, with this many Tributes")
     args = ap.parse_args()
     assets = args.decomp / "assets"
     if not (assets / "cards" / "stats.csv").exists():
@@ -165,6 +183,23 @@ def main():
             sys.exit(f"deck {deck['_duelist']}: card {old} not found")
     if not args.check:
         path.write_text(dump_json(data) + "\n", encoding="utf-8")
+
+    # Card text (effects builds only).
+    if args.text:
+        path = assets / "cards" / "descriptions.json"
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        if json.dumps(data, ensure_ascii=False, indent=1) + "\n" != raw:
+            sys.exit(f"{path}: unexpected formatting, refusing to rewrite it")
+        for number, (card_id, name, _) in GODS.items():
+            text = SUMMON_TEXT.format(n=args.text) + EFFECT_TEXT[number]
+            if len(text.encode("ascii")) >= TEXT_RECORD:
+                sys.exit(f"{name}: the text is longer than its {TEXT_RECORD}-byte record")
+            if data[card_id] != text:
+                changes.append(f"text {name}: {len(text)} characters")
+                data[card_id] = text
+        if not args.check:
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
     verb = "would change" if args.check else "changed"
     print(f"{verb} {len(changes)} thing(s)" + (":" if changes else " (already applied)"))

@@ -27,6 +27,9 @@ tags: [gba, decomp, rom-hack, bps, function-hooks, trampolines, card-game, ai, d
 > pipeline; the C edits are hooked into the original ROM layout, because the decomp can't absorb code growth.
 > Checked with 8 headless-mGBA oracles (each one also fails on the original ROM) and shipped as a 39 KB
 > `.bps`. It works in Delta on iOS: the user summoned a God with two Tributes and attacked with it.
+> Later builds add the TCG three-Tribute rule and the Gods' TCG effects (Obelisk's wipe, Slifer's hand-size
+> ATK and drain, Ra's LP payment and destroy). The effects go through a relocated copy of the game's effect
+> table.
 
 ## Setup
 - **ROM:** the user's own dump of the USA cartridge (`AY5E`, 8 MiB). The JP *Duel Monsters 5* is a different
@@ -135,6 +138,31 @@ Suite: 15 oracles, run with the 2-Tribute build as the control. The rule-discrim
 the Blue-Eyes regressions pass on both. In a God-free duel the two builds' EWRAM is identical. The user
 confirmed this build works in Delta on iOS too.
 
+### Third and fourth builds: God effects
+`build.sh ... --effects` (with either Tribute rule) adds `patch_god_effects.py`. It copies the mod's own
+`src/god_effects.c` and `god_effects_table.s` into the decomp as two new units, then makes 22 anchored edits.
+- **How EDS runs effects:** a 426-row table `gCardEffects` (`0x0819A9D4`, 0x18 bytes per row:
+  `number, flags, resolve, check, prepare, chainA, chainB`), binary-searched by `FindCardEffect`. Its bound
+  (`hi = 425`) is hard-coded. Much of a card's behaviour is *not* in the table, though: it is
+  `switch (card number)` cases elsewhere:
+  - stats in `GetZoneCardStats` (Muka Muka was Slifer's template);
+  - Normal Summon triggers in `ExecuteSummonAction` step 2;
+  - a field monster's Activate in `CanActivateMonsterEffect`;
+  - reactions to every summon in `SummonAction_Update`;
+  - targeting immunity in `CanCardTargetZone`;
+  - the CPU's monster effects in a 4-entry ROM list inside `AiActivateMonsterEffects`.
+- **The table can't grow in place:** `gTributeSummonPrompts` starts where it ends. The new unit `.incbin`s the
+  decomp's own built table (made from the user's ROM, so nothing is committed) and appends the Gods' rows.
+  `#define gCardEffects gCardEffectsMod` in `effect.h` sends every reader to it, so the hook builder hooks
+  all 11 reader functions on its own. A check script compares the 426 rows to the original, the sort order
+  and that every reader is hooked.
+- **Per-card memory:** zone links. Every engine reader ignores link kinds it doesn't know, so new kinds 14
+  (Ra's paid LP) and 15 (a pad) are safe. The engine's existing kind 4 (ATK bonus) is removed in the End
+  Phase, so it can't hold Ra's LP.
+- **Checks:** 19 effect oracles per build, each failing on the same build without effects (Card View text
+  included), plus the base suite on the effects build. In a God-free duel, EWRAM is identical with and
+  without effects.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -192,6 +220,21 @@ confirmed this build works in Delta on iOS too.
     - With nothing summonable in hand, Activate isn't offered at all.
 12. **Deck Edit shows the Gods' stats as `X000`.**
    - **Cause:** that's the game's own Divine rendering. Card View and the duel show 4000. Not a bug.
+13. **A text box closes as soon as it opens.**
+    - **Cause:** it was opened on the same frame as the A press that made the previous cursor pick, and its
+      update saw that press.
+    - **Fix:** open the next prompt from a separate step, one frame later.
+14. **An Equip's link outlives the Equip.**
+    - **Cause:** `RemoveLinksToZone` skips the link right after any link it doesn't read as a card location
+      (an engine quirk).
+    - **Fix:** follow every new non-location link with a pad link (kind 15, value `0xFFFF`).
+15. **A CPU test wiped the CPU's own field.**
+    - **Cause:** its real hand had Time Wizard, which lost its coin toss.
+    - **Fix:** give the CPU a hand of plain monsters in effect tests.
+16. **No Battle Phase on turn 1.** Battle oracles start from the `duel_turn2` library state: B, then Enter
+    Battle Phase, then the monster's second command (Attack).
+17. **Removing a menu command shifts the keys.** Without Set, a God's hand menu is Card View / Summon, and
+    two RIGHTs wrap back to Card View. Keep a separate key list per build.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the
@@ -199,10 +242,11 @@ patch.
 
 ## Cost and time
 One session: recon, then toolchain, data, code, hooks, oracles, a showcase clip and docs, in a few hours of
-wall-clock. The build takes about 1 minute; the oracle suite with controls takes about 45 s.
+wall-clock. The three-Tribute build and the effects builds took one session each. A build takes about 1
+minute; an oracle suite with its control takes a few minutes.
 
 ## Open questions
-- God effects would need new rows in the 426-row effect-handler table, whose binary-search bound is
-  hard-coded in `FindCardEffect`.
+- Not built: the TCG rule that a Special Summoned Obelisk or Slifer goes to the graveyard in the End Phase,
+  and "Ra can't be Special Summoned".
 - The hook builder is generic enough for any non-relocatable GBA decomp. It could become a technique note
   or a `um` command.
