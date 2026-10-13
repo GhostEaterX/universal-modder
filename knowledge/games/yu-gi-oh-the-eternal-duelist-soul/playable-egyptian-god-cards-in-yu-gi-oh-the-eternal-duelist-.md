@@ -161,7 +161,8 @@ confirmed this build works in Delta on iOS too.
   Phase, so it can't hold Ra's LP.
 - **Checks:** 18 effect oracles per build, each failing on the same build without effects (Card View text
   included), plus the base suite on the effects build. In a God-free duel, EWRAM is identical with and
-  without effects. The user reports that the effects patch works in Delta on iOS.
+  without effects. In Delta on iOS the user ran the three-Tribute effects
+  build and summoned Ra.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

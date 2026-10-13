@@ -246,7 +246,8 @@
       "emulator": "Delta (iOS)",
       "by": "the user",
       "date": "2026-10-13",
-      "result": "works (the user's report; which effects patch and which effects were tried were not stated)"
+      "patch": "gods-3t-fx.bps",
+      "result": "works: the user summoned Ra"
     }
   }
 }

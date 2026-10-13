@@ -205,8 +205,7 @@
   Doomed behave the same frame for frame on both.
 
 ## 2026-10-13: effects on a real device
-- **Delta on iOS (user's report):** "the patch worked". They didn't say which effects patch or which effects
-  they tried. Patches are complete on their own: each `-fx` patch includes its base build's changes and goes
-  onto the original ROM.
+- **Delta on iOS (user's test):** `gods-3t-fx.bps` works; they summoned Ra. Patches are complete on their
+  own: each `-fx` patch includes its base build's changes and goes onto the original ROM.
 - **Next:** the user's call: a PR (fork `main` or upstream), the End Phase trait, "Ra can't be Special
   Summoned".
