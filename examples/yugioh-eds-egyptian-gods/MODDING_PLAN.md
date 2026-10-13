@@ -81,5 +81,5 @@ Rejected routes:
 ## Open
 - **Optional next steps:**
   - ~~TCG-accurate three Tributes~~: done as a second build, `gods-3t.bps` (`PLAN-three-tributes.md`);
-  - God effects: new rows in the 426-row `FindCardEffect` table, whose bound is hard-coded;
-  - God card text.
+  - God effects and card text: planned in `PLAN-god-effects.md` (a relocated effect table with three new
+    rows, plus cases in the stats, summon, menu and CPU code), waiting for the user's choices.

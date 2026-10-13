@@ -146,3 +146,25 @@
 - **Delta on iOS (user's test):** the 3-Tribute build works. Both builds are now confirmed on the user's
   device.
 - **Next:** the user's call: a PR (fork `main` or upstream), God effects.
+
+## 2026-10-13: God effects, planning
+- **User's ask:** plan the God effects: how EDS handles a card's effect, which effects each God gets, how a
+  new effect goes onto an existing card. The plan is `PLAN-god-effects.md`; nothing is built yet.
+- **The effect table can't grow in place:** `gCardEffects` (426 rows × 0x18 at `0x0819A9D4`) ends exactly
+  where `gTributeSummonPrompts` starts (`0x0819D1C4`). `FindCardEffect` hard-codes `hi = 425`, and eight units
+  index the table directly. Plan: a relocated copy (`.incbin` of the decomp's own built table, plus three
+  rows) and a `#define` that sends every reader to it, so `hookbuild.py` hooks them all.
+- **Most of a card's behaviour isn't in the table.** It is `switch (card number)` cases:
+  - `GetZoneCardStats` for continuous stats (Muka Muka is Slifer's template);
+  - `ExecuteSummonAction` step 2 for Normal Summon triggers (Dragon Seeker);
+  - `CanActivateMonsterEffect` for a monster's Activate command;
+  - `SummonAction_Update` for reactions to any summon (Jinzo, Pumpking);
+  - `CanCardTargetZone` for targeting immunity (Lord of D.).
+- **Per-card memory:** zone links (`links[32]`, `linkKinds[32]`). They are cleared with the zone, and only
+  kinds 1, 2, 5, 7 and 10 are read as card locations, so a new kind can hold Ra's paid LP safely. Kind 4
+  (`ATK_BONUS`) is removed in the End Phase, so it can't.
+- **CPU:** `AiActivateMonsterEffects` loops over a 4-entry list in ROM (`0x0819DD64`), so the God branch has
+  to be code.
+- **Card text:** fixed 480-byte records, so new text replaces the old in place.
+- **Not reachable from this container:** yugipedia.com (DNS). The TCG texts came from search results.
+- **Next:** the user picks the variants (Obelisk wipe or damage, Ra "become" or "gains", traits, builds).
