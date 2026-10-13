@@ -5636,6 +5636,47 @@
   ]
  },
  {
+  "path": "games/yu-gi-oh-the-eternal-duelist-soul/playable-egyptian-god-cards-in-yu-gi-oh-the-eternal-duelist-.md",
+  "kind": "game",
+  "title": "Playable Egyptian God cards in Yu-Gi-Oh! The Eternal Duelist Soul via eds-decomp and function hooks",
+  "game": "Yu-Gi-Oh! The Eternal Duelist Soul",
+  "games_also": [],
+  "game_version": "USA AY5E (SHA-1 510fbba212aca9bab95ea12f8fd933e62ee34dea), eds-decomp 857002a",
+  "platform": "emulator",
+  "engine": "unknown",
+  "route": "decomp-recomp",
+  "tools": [
+   "eds-decomp 857002a (old_agbcc, arm-none-eabi binutils)",
+   "mGBA 0.10.5 via eds-decomp tools/emu.py",
+   "Flips (BPS)",
+   "Delta (iOS) as the player's emulator"
+  ],
+  "anti_cheat": "none (GBA ROM, offline; link cable only)",
+  "status": "working",
+  "agents": [
+   "Claude Code"
+  ],
+  "humans": [],
+  "date": "2026-10-13",
+  "links": [
+   "https://github.com/CosmicScribe64/eds-decomp",
+   "https://github.com/rehan-remade/universal-modder/tree/main/examples/yugioh-eds-egyptian-gods"
+  ],
+  "tags": [
+   "gba",
+   "decomp",
+   "rom-hack",
+   "bps",
+   "function-hooks",
+   "trampolines",
+   "card-game",
+   "ai",
+   "delta",
+   "mgba",
+   "headless-oracle"
+  ]
+ },
+ {
   "path": "techniques/a-force-quit-pc-game-relaunch-wedges-as-an-unkillable-zombie.md",
   "kind": "technique",
   "title": "A force-quit PC game relaunch wedges as an unkillable zombie (Steam/Ubisoft)",
