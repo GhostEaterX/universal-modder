@@ -1,23 +1,71 @@
 {
   "date": "2026-10-13",
-  "rom_in": {"title": "Yu-Gi-Oh! The Eternal Duelist Soul (USA)", "game_code": "AY5E",
-             "sha1": "510fbba212aca9bab95ea12f8fd933e62ee34dea", "size": 8388608},
-  "rom_out": {"sha1": "2b905f0111c72fd45fa0745e9c4c9c02b20645e7", "size": 16777216,
-              "patch": "gods.bps", "patch_bytes": 39158, "patch_tool": "flips --create --bps-delta"},
+  "rom_in": {
+    "title": "Yu-Gi-Oh! The Eternal Duelist Soul (USA)",
+    "game_code": "AY5E",
+    "sha1": "510fbba212aca9bab95ea12f8fd933e62ee34dea",
+    "size": 8388608
+  },
+  "rom_out": {
+    "sha1": "2b905f0111c72fd45fa0745e9c4c9c02b20645e7",
+    "size": 16777216,
+    "patch": "gods.bps",
+    "patch_bytes": 39158,
+    "patch_tool": "flips --create --bps-delta"
+  },
   "eds_decomp_commit": "857002acd7a2e3ce98afb2992fe9761144308c9a",
-  "build": {"edited_units": 43, "changed_functions_hooked": 63, "blob_base": "0x08800000",
-            "blob_bytes": 215224, "long_branch_stubs": 536, "monster_type_tests_rewritten": 85,
-            "obelisk_kind_cases": 12, "reproducible": "scripts/build.sh from a fresh clone gives the same SHA-1"},
+  "build": {
+    "edited_units": 43,
+    "changed_functions_hooked": 63,
+    "blob_base": "0x08800000",
+    "blob_bytes": 215224,
+    "long_branch_stubs": 536,
+    "monster_type_tests_rewritten": 85,
+    "obelisk_kind_cases": 12,
+    "reproducible": "scripts/build.sh from a fresh clone gives the same SHA-1"
+  },
   "emulator": "mGBA 0.10.5 (libmgba, headless) via eds-decomp tools/emu.py, blank SRAM, HLE BIOS",
   "oracles": [
-    {"check": "Kaiba's duel deck holds Obelisk", "mod": "pass", "original": "fails"},
-    {"check": "Yami Yugi's duel deck holds Slifer", "mod": "pass", "original": "fails"},
-    {"check": "Marik's duel deck holds Ra", "mod": "pass", "original": "fails"},
-    {"check": "password 10000020 gives Slifer", "mod": "pass", "original": "fails"},
-    {"check": "player Tribute Summons Slifer", "mod": "pass", "original": "fails (only Card View offered)"},
-    {"check": "CPU Tribute Summons Obelisk", "mod": "pass", "original": "fails"},
-    {"check": "CPU Tribute Summons Slifer", "mod": "pass", "original": "fails"},
-    {"check": "CPU Tribute Summons Ra", "mod": "pass", "original": "fails"}
+    {
+      "check": "Kaiba's duel deck holds Obelisk",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "Yami Yugi's duel deck holds Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "Marik's duel deck holds Ra",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "password 10000020 gives Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "player Tribute Summons Slifer",
+      "mod": "pass",
+      "original": "fails (only Card View offered)"
+    },
+    {
+      "check": "CPU Tribute Summons Obelisk",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "CPU Tribute Summons Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "CPU Tribute Summons Ra",
+      "mod": "pass",
+      "original": "fails"
+    }
   ],
   "extra_checks": [
     "password -> Trunk -> Deck Edit 'To Main Deck' -> Campaign duel: the player's 41-card duel deck holds Slifer (ID 818)",
@@ -25,5 +73,10 @@
     "null hooks (original code relocated, same 63 hooks): EWRAM identical to the original layout at main_menu, duel_start, duel_main1, duel_turn2 except gDuelScreen.fieldBgScroll (VBlank drift counter, 2-3 frames of lag during the deal)",
     "mod vs null hooks, no Gods involved: EWRAM identical and identical frame counts at every library state"
   ],
-  "not_verified": ["the user's own Delta install (iOS, VBA-M-based core)"]
+  "real_device": {
+    "emulator": "Delta (iOS)",
+    "by": "the user",
+    "date": "2026-10-13",
+    "result": "summoned a God with two Tributes from the field; 4000 ATK / 4000 DEF; attacked with it"
+  }
 }

@@ -93,3 +93,10 @@
 - **Showcase:** a 35 s silent clip from the harness (`um video compile`), sent to the user rather than
   committed (19 MB).
 - **Next:** the user tests in Delta. Then, with their OK: the field note PR, and maybe 3 Tributes or God effects.
+
+## 2026-10-13: real device
+- **Delta on iOS (user's test):** the patched ROM boots. They summoned a God with two Tributes from the
+  field; it showed 4000 ATK / 4000 DEF, and they attacked with it. So the 16 MiB ROM and the ARM
+  trampolines running from ROM work in Delta's core, not only in mGBA.
+- **Not checked in Delta yet:** the CPU summoning its God, the password screen.
+- **Next:** the user's call: a PR (fork `main` or upstream), 3 Tributes, God effects.

@@ -109,7 +109,7 @@ Also checked:
   during the opening deal.
 - **Regression:** in a duel without Gods, the mod ROM's EWRAM and frame timing match the hook-test ROM
   exactly.
-- **Not yet confirmed:** the user tests the mod on a real device in Delta.
+- **On a real device:** tested by the user in Delta on iOS: they summoned a God with two Tributes from the field, it showed 4000 ATK / 4000 DEF, and they attacked with it.
 
 ## Known limits
 - **No God effects:** no Obelisk wipe, no Slifer hand-size ATK.

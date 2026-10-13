@@ -1,7 +1,7 @@
 # Yu-Gi-Oh! The Eternal Duelist Soul: Egyptian God cards modding plan
 
-**Status: working.** Every check passes in headless mGBA (`evidence/verification.json`). Still waiting on
-the user's test in Delta.
+**Status: working.** Every check passes in headless mGBA (`evidence/verification.json`), and the mod works in
+Delta on the user's iOS device.
 
 - **Game:** Yu-Gi-Oh! The Eternal Duelist Soul (EDS), Game Boy Advance, Konami 2001. Played in Delta (iOS).
 - **Idea:** Obelisk, Slifer and Ra can be obtained, put in a deck and summoned by the player, and NPC duelists
@@ -79,8 +79,6 @@ Rejected routes:
 - **Effects:** none in this version.
 
 ## Open
-- The user's test in Delta, which runs a VBA-M-based core: the patched ROM is 16 MiB and runs ARM trampolines
-  from ROM.
 - **Optional next steps:**
   - TCG-accurate three Tributes (`CanSummonFromHand`, the summon step, `AiHasTributesFor`);
   - God effects: new rows in the 426-row `FindCardEffect` table, whose bound is hard-coded;

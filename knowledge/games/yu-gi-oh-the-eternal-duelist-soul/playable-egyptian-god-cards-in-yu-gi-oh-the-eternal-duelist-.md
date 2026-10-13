@@ -26,7 +26,7 @@ tags: [gba, decomp, rom-hack, bps, function-hooks, trampolines, card-game, ai, d
 > CPU summons them. It's built on the complete matching decomp eds-decomp. Data edits go through its asset
 > pipeline; the C edits are hooked into the original ROM layout, because the decomp can't absorb code growth.
 > Checked with 8 headless-mGBA oracles (each one also fails on the original ROM) and shipped as a 39 KB
-> `.bps`. A test on a real device in Delta is pending.
+> `.bps`. It works in Delta on iOS: the user summoned a God with two Tributes and attacked with it.
 
 ## Setup
 - **ROM:** the user's own dump of the USA cartridge (`AY5E`, 8 MiB). The JP *Duel Monsters 5* is a different
@@ -117,8 +117,8 @@ All pass on the mod and all fail on the original ROM (`--control`).
 - the null-hook equivalence test (gotcha 1);
 - a regression run (no Gods, mod vs null hooks): EWRAM and frame counts identical.
 
-**Not verified:** Delta on an iPhone. Its core is VBA-M-based, and the ROM is 16 MiB with ARM trampolines
-running from ROM.
+**On a real device:** tested by the user in Delta on iOS: they summoned a God with two Tributes from the field, it showed 4000 ATK / 4000 DEF, and they attacked with it. So the 16 MiB ROM and the ARM trampolines running from ROM work there
+too, not only in mGBA. Not checked in Delta: the CPU summoning a God, and the password screen.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
@@ -168,7 +168,6 @@ One session: recon, then toolchain, data, code, hooks, oracles, a showcase clip 
 wall-clock. The build takes about 1 minute; the oracle suite with controls takes about 45 s.
 
 ## Open questions
-- Does Delta's VBA-M-based core run the 16 MiB ROM and the ROM-resident ARM trampolines? It should; mGBA does.
 - TCG-accurate three Tributes would touch `CanSummonFromHand`, the player's tribute prompt and
   `AiHasTributesFor`.
 - God effects would need new rows in the 426-row effect-handler table, whose binary-search bound is
