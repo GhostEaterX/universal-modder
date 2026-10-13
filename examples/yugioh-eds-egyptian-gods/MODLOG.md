@@ -100,3 +100,44 @@
   trampolines running from ROM work in Delta's core, not only in mGBA.
 - **Not checked in Delta yet:** the CPU summoning its God, the password screen.
 - **Next:** the user's call: a PR (fork `main` or upstream), 3 Tributes, God effects.
+
+## 2026-10-13: three Tributes (second build)
+- **User's decisions:** keep both builds (`gods.bps` = 2, `gods-3t.bps` = 3); Ultimate Offering also takes 3.
+- **The engine had half of it:**
+  - `SummonAction.tribute3Zone` and `hasTribute3`, never set; bit 30 (`unk0_30`) is unused and is now
+    `tribute3Player`;
+  - `SummonStep_SpecialFromHand` already Tributes a third monster.
+- **`scripts/patch_three_tributes.py` (26 anchored edits in 10 files):**
+  - a third byte in the Tribute word (bits 16-23) for `QueueNormalSummon`, the new
+    `QueueNormalSummonChoosePositionEx` (the old entry point wraps it) and `QueueSpecialSummonFromHand`;
+  - both Normal Summon executors remove the third Tribute;
+  - `CanSummonFromHand` wants more than 2 tributable monsters for a God;
+  - the card menu gets steps 90-97;
+  - Ultimate Offering gets steps 0x7A/0x79/0x73/0x72;
+  - the AI gets `AiPickTributeMonsterExcept` plus God branches in `AiHasTributesFor`,
+    `AiChooseSummonWithTribute` and both `AiStepMainPhase` paths.
+- **Gotcha, stale third Tribute:** the kind-6 executor reads `hasTribute3`. A God summon leaves it set, so
+  every queue must write the third byte (0 when there is none), or a later Special Summon from hand eats a
+  monster. All callers pass ≤16-bit words (audited), so decoding byte 2 is safe.
+- **Gotcha, storing the third pick:**
+  - in the card menu: `summonSeq` (4 bits, used only by the Gate Guardian and Valkyrion steps);
+  - in Ultimate Offering, whose `targets[]` is only `u16[3]`: the high byte of `targets[1]`.
+- **`hookbuild.py`:**
+  - globals that VANILLA lacks (new functions and strings) stay global and get no stub;
+  - `.rodata` is allowed for a unit whose vanilla object has none;
+  - units are detected by object comparison too, in case a header edit changes code.
+
+  The 2-Tribute ROM still rebuilds to `2b905f01…`.
+- **Result:** 45 units, 73 hooks, 555 stubs, a 226,390-byte blob. `gods-3t.gba` has SHA-1 `1cb038ed…` (fresh
+  build = dev build); `gods-3t.bps` is 45,617 bytes.
+- **Ultimate Offering in the harness:**
+  - setup: a set card 756 in spell/trap zone 5 with `canActivate` (+0x91 bit 2);
+  - one UP puts the cursor on it, then RIGHT selects Activate.
+
+  It pays 500 LP and asks for a hand monster. With only 2 fodder it offers no Activate at all, because nothing
+  is summonable.
+- **Oracles (`run_oracles.py --tributes 3 --control gods.gba`):** 15/15 pass. Every discriminating check fails
+  on the 2-Tribute build; the shared ones pass on both. In a God-free duel, 3t and 2t EWRAM and frame counts
+  are identical at every library state. The 2-Tribute suite is still 8/8 vs the original.
+- **Showcase:** a 23 s clip of the three-Tribute summon, sent to the user.
+- **Next:** the user tries `gods-3t` in Delta.

@@ -120,6 +120,20 @@ All pass on the mod and all fail on the original ROM (`--control`).
 **On a real device:** tested by the user in Delta on iOS: they summoned a God with two Tributes from the field, it showed 4000 ATK / 4000 DEF, and they attacked with it. So the 16 MiB ROM and the ARM trampolines running from ROM work there
 too, not only in mGBA. Not checked in Delta: the CPU summoning a God, and the password screen.
 
+### Second build: three Tributes (TCG rule)
+`build.sh ... --tributes 3` adds `patch_three_tributes.py`: 26 anchored edits, giving 73 hooked functions and
+4 new globals.
+- **What the engine already had:** a third Tribute slot (`tribute3Zone`/`hasTribute3`), unused, which the
+  Special-Summon-from-hand executor already Tributed.
+- **Normal Summons:** the Tribute word gets a third byte, and both Normal Summon executors remove it.
+- **The summon check** wants three tributable monsters.
+- **The player's menu** asks "requires 3 Tributes".
+- **Ultimate Offering** takes three picks for a God.
+- **The AI** picks three, through a new `AiPickTributeMonsterExcept`.
+
+Suite: 15 oracles, run with the 2-Tribute build as the control. The rule-discriminating ones fail there, and
+the Blue-Eyes regressions pass on both. In a God-free duel the two builds' EWRAM is identical.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -156,7 +170,26 @@ too, not only in mGBA. Not checked in Delta: the CPU summoning a God, and the pa
 7. **Docker CLI but no daemon in a cloud container.**
    - **Fix:** `tools/setup_native.sh` (EDS_MINIMAL=1).
    - The GitHub tarball download got a 403 from the proxy; `git clone --branch` worked.
-8. **Deck Edit shows the Gods' stats as `X000`.**
+8. **A third Tribute "leaks" into the next summon.**
+   - **Cause:** the Special-Summon-from-hand executor reads `hasTribute3`. A God summon leaves it set, so a
+     later Special Summon from hand would Tribute a monster for nothing.
+   - **Fix:** every queue function writes the third byte, 0 when absent. All existing callers pass Tribute
+     words of 16 bits or less; audit them before decoding new bits.
+9. **No room for the third pick.**
+    - **Card menu:** use `summonSeq` (4 bits, used only by the Gate Guardian and Valkyrion steps) for
+      zone | owner << 3.
+    - **Ultimate Offering:** `targets[]` is `u16[3]` and full, so use the free high byte of `targets[1]` (the
+      zone).
+10. **New functions and strings in hooked units fail to link.**
+    - **Cause:** hookbuild localized every global, and its stub pass looked every BL target up in the vanilla
+      ELF.
+    - **Fix:** globals that vanilla lacks stay global and are never stubbed. New `.rodata` is allowed when the
+      vanilla unit had none.
+11. **Ultimate Offering in the harness.**
+    - **Setup:** the card (ID 756) set in spell/trap zone 5 with `canActivate` (+0x91 bit 2).
+    - **Activating:** one UP from the hand reaches it, then RIGHT selects Activate.
+    - With nothing summonable in hand, Activate isn't offered at all.
+12. **Deck Edit shows the Gods' stats as `X000`.**
    - **Cause:** that's the game's own Divine rendering. Card View and the duel show 4000. Not a bug.
 
 ## Assets
@@ -168,8 +201,6 @@ One session: recon, then toolchain, data, code, hooks, oracles, a showcase clip 
 wall-clock. The build takes about 1 minute; the oracle suite with controls takes about 45 s.
 
 ## Open questions
-- TCG-accurate three Tributes would touch `CanSummonFromHand`, the player's tribute prompt and
-  `AiHasTributesFor`.
 - God effects would need new rows in the 426-row effect-handler table, whose binary-search bound is
   hard-coded in `FindCardEffect`.
 - The hook builder is generic enough for any non-relocatable GBA decomp. It could become a technique note

@@ -5,7 +5,13 @@ monster keeps EDS's rules: no Tribute at levels 1-4, one at 5-6, two at 7+. The 
 can be summoned: the player's card menu, the CPU's summon and set steps, and the summon-check that decides
 whether "Summon" is offered at all.
 
-**Status:** planned, not built. Everything below was read in eds-decomp `857002a`.
+**Status: built and verified.** `scripts/build.sh ... --tributes 3` → `gods-3t.bps`. All 15 checks of
+`tests/run_oracles.py --tributes 3` pass, and the ones that tell the rules apart fail on the two-Tribute
+build. Not yet tried in Delta.
+
+**Decisions (the user's):** ship both builds, and give Ultimate Offering the three-Tribute rule too.
+
+Everything below was read in eds-decomp `857002a`. Where the build differs from the plan, a note says so.
 
 ## What the engine already has
 The shared Duel Monsters engine still has half of a three-Tribute summon:
@@ -42,14 +48,14 @@ The shared Duel Monsters engine still has half of a three-Tribute summon:
 | # | Unit / function | Change |
 |---|---|---|
 | 1 | `summon_checks` `CanSummonFromHand` | a God needs more than two tributable monsters (`CountTributableMonsters(player, -1) > 2`) |
-| 2 | `effect_hooks` `CardMenu_SummonMonster` | God branch, new steps: "requires **3** Tributes?" → 1st → 2nd → 3rd pick, with B back to the question at each pick. Picks 1-2 stay in `summonTributes`; pick 3 goes in the menu's `placeZone` byte (only spell/trap placement and one non-EDS card key use it, never a monster summon). Then queue with a 3-byte Tribute word |
+| 2 | `effect_hooks` `CardMenu_SummonMonster` | God branch, new steps: "requires **3** Tributes?" → 1st → 2nd → 3rd pick, with B back to the question at each pick. Picks 1-2 stay in `summonTributes`. *Built:* pick 3 waits in `summonSeq` (zone \| owner << 3), which only the Gate Guardian and Valkyrion steps use, rather than `placeZone`. Then queue with a 3-byte Tribute word |
 | 3 | `summon_action` `QueueNormalSummon`, `QueueNormalSummonChoosePosition` | decode byte 2 of the Tribute word into `tribute3Zone` / `hasTribute3`, with the owner in bit 30 |
 | 4 | `summon_checks` `ExecuteSummonAction`, `ExecuteSummonActionAskPosition` | Tribute the third monster too |
 | 5 | `summon_builders` `AiPickTributeMonster` | add a variant that skips two zones (the third pick) |
 | 6 | `summon_builders` `AiHasTributesFor` | God: three different picks |
 | 7 | `ai_summon` `AiChooseSummonWithTribute` | God: three picks, three nibbles in the simulation mask |
 | 8 | `ai_steps` `AiStepMainPhase` (summon and set steps) | God: three picks packed into the Tribute word |
-| 9 | `effect_resolve4` `EffectUltimateOfferingResolve` | Ultimate Offering grants an extra Normal Summon with its own "2 Tributes" steps. **Decision:** give it the same three-pick branch, or refuse Gods there. Leaving it alone would be a two-Tribute loophole |
+| 9 | `effect_resolve4` `EffectUltimateOfferingResolve` | *Built:* the same three-pick branch for a God. The third pick rides in the high byte of `targets[1]` (the summon zone), and the queue goes through a new `QueueNormalSummonChoosePositionEx`, which takes a 32-bit Tribute word. With only two monsters, Ultimate Offering can't even be activated for a God |
 | 10 | new text | "Summoning this monster requires @33 @0Tributes. Do you wish to @2Summon@0?" and "Please select 3rd monster as @3Tribute@0.", in the game's own `@` colour codes |
 
 All of these are functions the hook build already handles. Gods are told apart by card number (1910-1912)

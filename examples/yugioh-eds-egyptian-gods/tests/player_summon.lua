@@ -8,6 +8,8 @@ pcall(function() GOD = tonumber(os.getenv("GOD")) or GOD end)
 local P0 = 0x020192E4                -- gDuelPlayers[0]
 local ZONES, ZONE_SIZE, HAND = 0x28, 0x94, 0x684
 local FODDER = 1                     -- card ID 1 (a Level 4 normal monster)
+local NFODDER = 2                    -- how many fodder monsters (zones 0..NFODDER-1); env FODDER
+pcall(function() NFODDER = tonumber(os.getenv("FODDER")) or NFODDER end)
 local MENU = 0x02015EE8              -- gDuelCtrl.phase; the card menu state is logged via the zones
 local frame, last = 0, ""
 
@@ -28,7 +30,7 @@ callbacks:add("frame", function()
             local a = P0 + HAND + i * 4
             emu:write32(a, (emu:read32(a) & ~0xFFF) | GOD)
         end
-        for z = 0, 1 do
+        for z = 0, NFODDER - 1 do
             local a = P0 + ZONES + z * ZONE_SIZE
             emu:write32(a, (emu:read32(a) & ~0x1FFF) | FODDER)
             emu:write8(a + 6, (emu:read8(a + 6) & ~0x3) | 0x2)   -- face up, attack position

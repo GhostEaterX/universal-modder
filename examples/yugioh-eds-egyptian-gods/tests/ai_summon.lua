@@ -11,8 +11,11 @@ pcall(function() GOD = tonumber(os.getenv("GOD")) or GOD end)
 local P0 = 0x020192E4                -- gDuelPlayers[0]
 local P1 = P0 + 0xD64                -- gDuelPlayers[1]
 local THREAT = 82                    -- card ID 82, Blue-Eyes White Dragon
+pcall(function() THREAT = tonumber(os.getenv("THREAT")) or THREAT end)
 local ZONES, ZONE_SIZE, HAND = 0x28, 0x94, 0x684
 local FODDER = 1                     -- card ID 1 (a Level 4 normal monster)
+local NFODDER = 2                    -- how many fodder monsters (zones 0..NFODDER-1); env FODDER
+pcall(function() NFODDER = tonumber(os.getenv("FODDER")) or NFODDER end)
 local HOLD = 60
 local frame, last, since = 0, "", nil
 
@@ -27,7 +30,7 @@ callbacks:add("frame", function()
     if frame == 1 then
         local a = P1 + HAND
         emu:write32(a, (emu:read32(a) & ~0xFFF) | GOD)
-        for z = 0, 1 do
+        for z = 0, NFODDER - 1 do
             local za = P1 + ZONES + z * ZONE_SIZE
             emu:write32(za, (emu:read32(za) & ~0x1FFF) | FODDER | 0x1000)    -- owner bit 12 = player 1
             emu:write8(za + 6, (emu:read8(za + 6) & ~0x3) | 0x2)              -- face up, attack position

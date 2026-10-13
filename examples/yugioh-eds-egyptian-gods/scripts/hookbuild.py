@@ -12,8 +12,10 @@ hooks the edited code in instead:
      relocations differ between VANILLA/build/src/<unit>.o and MOD/build/src/<unit>.o.
   3. The edited units' objects are linked at --base (past the original 8 MiB), with every symbol they don't
      define taken from VANILLA's ELF (original addresses). Their own globals are made local, so calls
-     inside a unit stay in the new copy. A Thumb BL can only reach 4 MiB, so every BL that leaves the blob
-     goes through a generated long-branch stub.
+     inside a unit stay in the new copy; globals that VANILLA doesn't have (new functions) stay global, so
+     other edited units can call them. A Thumb BL can only reach 4 MiB, so every BL that leaves the blob
+     goes through a generated long-branch stub. New read-only data (strings) rides along after the code,
+     as long as the vanilla unit had none: nothing in the original layout can be pointing at it.
   4. The entry of each changed function in VANILLA's ROM is overwritten with a jump to its new copy
      (Thumb `bx pc` -> ARM `ldr ip, [pc]; bx ip`; r0-r3 and lr are untouched).
 
@@ -139,15 +141,21 @@ def defined_globals(obj):
                       if s.name and s["st_info"]["bind"] == "STB_GLOBAL" and s["st_shndx"] != "SHN_UNDEF")
 
 
-def localize_all(obj, work):
-    """Make every symbol the object defines local, so the -R symbols of VANILLA can't clash with it."""
-    names = defined_globals(obj)
+def localize_all(obj, work, keep=frozenset()):
+    """Make every symbol the object defines local (except `keep`), so VANILLA's -R symbols can't clash."""
+    names = [n for n in defined_globals(obj) if n not in keep]
     if names:
         lst = work / "localize.txt"
         lst.write_text("\n".join(names) + "\n")
         run("arm-none-eabi-objcopy", f"--localize-symbols={lst}", str(obj))
-    if defined_globals(obj):
+    if set(defined_globals(obj)) - set(keep):
         sys.exit(f"{obj}: could not localize its symbols")
+
+
+def section_size(obj, name):
+    with open(obj, "rb") as f:
+        sec = ELFFile(f).get_section_by_name(name)
+        return sec["sh_size"] if sec else 0
 
 
 def symbol_values(elf_path):
@@ -176,23 +184,46 @@ def main():
     vsyms = symbol_values(van / "build" / "eds.elf")
     vbases = map_text_bases(van / "build" / "eds.map")
 
-    units = [u for u in units_of(mod) if (van / "src" / f"{u}.c").read_bytes() != (mod / "src" / f"{u}.c").read_bytes()]
-    hooks = {}      # unit -> [function]
-    for u in units:
-        hooks[u] = changed_functions(van / "build" / "src" / f"{u}.o", mod / "build" / "src" / f"{u}.o")
+    # Edited units: the C differs, or a header change altered the compiled code of an untouched .c.
+    units, hooks = [], {}   # hooks: unit -> [function]
+    for u in units_of(mod):
+        edited = (van / "src" / f"{u}.c").read_bytes() != (mod / "src" / f"{u}.c").read_bytes()
+        changed = changed_functions(van / "build" / "src" / f"{u}.o", mod / "build" / "src" / f"{u}.o")
+        if edited or changed:
+            if changed and not edited:
+                print(f"note: {u}.c is unchanged but its code differs (a header edit): {', '.join(changed)}")
+            units.append(u)
+            hooks[u] = changed
     nhooks = sum(map(len, hooks.values()))
     print(f"{len(units)} edited units, {nhooks} changed functions")
 
-    # Objects for the blob: localize their globals, route outgoing BLs through stubs.
-    stubs = set()
+    # New globals: defined by an edited unit but absent from VANILLA. They stay global in the blob.
+    srcs = {u: (van if args.null else mod) / "build" / "src" / f"{u}.o" for u in units}
+    new_globals = {}
     for u in units:
-        src = (van if args.null else mod) / "build" / "src" / f"{u}.o"
-        dst = work / "objs" / f"{u}.o"
-        targets = bl_targets(src)
+        for name in defined_globals(srcs[u]):
+            if name not in vsyms:
+                if name in new_globals:
+                    sys.exit(f"new global {name} is defined by both {new_globals[name]} and {u}")
+                new_globals[name] = u
+    if new_globals:
+        print(f"new functions/data: {', '.join(sorted(new_globals))}")
+
+    # Objects for the blob: localize their globals, route outgoing BLs through stubs. A unit may bring new
+    # .rodata (strings) only if its vanilla object had none.
+    stubs = set()
+    rodata_units = []
+    for u in units:
+        src, dst = srcs[u], work / "objs" / f"{u}.o"
+        if section_size(src, ".rodata"):
+            if section_size(van / "build" / "src" / f"{u}.o", ".rodata"):
+                sys.exit(f"{u}: its vanilla object already has .rodata; this tool cannot move that")
+            rodata_units.append(u)
+        targets = bl_targets(src) - set(new_globals)
         stubs |= targets
         redefs = [f"--redefine-sym={t}=__hookstub_{t}" for t in sorted(targets)]
         run("arm-none-eabi-objcopy", *redefs, str(src), str(dst))
-        localize_all(dst, work)
+        localize_all(dst, work, keep=frozenset(new_globals))
 
     lines = ["\t.text", "\t.syntax unified"]
     for t in sorted(stubs):
@@ -204,6 +235,7 @@ def main():
     run("arm-none-eabi-as", "-mcpu=arm7tdmi", "-mthumb-interwork", "-o", str(work / "stubs.o"), str(work / "stubs.s"))
 
     objs = " ".join(f"objs/{u}.o(.text)" for u in units)
+    objs += "".join(f" objs/{u}.o(.rodata)" for u in rodata_units)
     (work / "hook.ld").write_text(f"""OUTPUT_ARCH(arm)
 SECTIONS
 {{
@@ -214,7 +246,7 @@ SECTIONS
 """)
     run("arm-none-eabi-ld", "-T", "hook.ld", "-R", str(van / "build" / "eds.elf"), "-Map", "blob.map",
         "-o", "blob.elf", cwd=work)
-    for sec in ("data", "bss", "rodata"):
+    for sec in ("data", "bss"):
         out = run("arm-none-eabi-size", "-A", str(work / "blob.elf"))
         if re.search(rf"^\.{sec}\s+[1-9]", out, re.M):
             sys.exit(f"blob has a .{sec} section: an edited unit defines data, which this tool cannot move")

@@ -5,7 +5,10 @@ can own but never use. This mod makes them real monsters, for you and for the CP
 
 - **Stats:** each God is a Level 10, 4000 ATK / 4000 DEF monster that keeps its Divine type, attribute icon
   and card art. Obelisk keeps its blue frame.
-- **Summoning:** a God takes the game's Level 7+ rule of two Tributes, for you and for the CPU.
+- **Summoning:** pick a build:
+  - `gods.bps`: a God takes the game's Level 7+ rule of two Tributes;
+  - `gods-3t.bps`: a God takes **three**, the TCG rule. That holds for you, for the CPU and for Ultimate
+    Offering's extra summon. Every other monster keeps the game's rules, so Blue-Eyes still takes two.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -19,7 +22,7 @@ can own but never use. This mod makes them real monsters, for you and for the CP
 - **Not included:** the Gods' anime/TCG effects. They are effect-less monsters, as the original data
   defines them.
 
-It ships as `gods.bps`, a patch for your own ROM, and only works with the USA release (game code `AY5E`,
+It ships as two patches for your own ROM, `gods.bps` and `gods-3t.bps`, and only works with the USA release (game code `AY5E`,
 SHA-1 `510fbba212aca9bab95ea12f8fd933e62ee34dea`). You have to dump the ROM from your own cartridge; no ROM is
 included or linked here.
 
@@ -27,7 +30,7 @@ included or linked here.
 1. **Back up your save first.** In Delta, long-press the game and export its save file.
 2. **Patch your ROM.**
    - Open [Rom Patcher JS](https://www.marcrobledo.com/RomPatcher.js/) in Safari.
-   - Pick your `.gba` as the ROM and `gods.bps` as the patch.
+   - Pick your `.gba` as the ROM and `gods.bps` (or `gods-3t.bps`) as the patch.
    - Tap **Apply patch** and save the result to Files.
    - The patch carries your ROM's checksum, so the patcher warns you if you pick the wrong ROM.
 3. **Import into Delta.** Tap **+**, choose Files and pick the patched `.gba`. It shows up as a separate game,
@@ -79,11 +82,30 @@ Needs Linux, WSL or macOS with git and python3. Then:
 2. Optionally, install [Flips](https://github.com/Alcaro/Flips) for the `.bps`.
 3. Run:
    ```sh
-   scripts/build.sh /path/to/your-eds-usa.gba ./work      # ~1 minute: work/gods.gba and work/gods.bps
+   scripts/build.sh /path/to/your-eds-usa.gba ./work                 # work/gods.gba    + work/gods.bps
+   scripts/build.sh /path/to/your-eds-usa.gba ./work --tributes 3    # work/gods-3t.gba + work/gods-3t.bps
    ```
+   Each takes about a minute.
 
 The build pins eds-decomp to commit `857002a` (2026-10-04). Starting from the same ROM, it reproduces the
-tested ROM byte for byte: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`.
+tested ROMs byte for byte:
+- `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
+- `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`.
+
+### How the three-Tribute build works
+`scripts/patch_three_tributes.py` runs after `patch_source.py`. The engine already had a third Tribute slot
+in its pending-summon record, unused. The Special Summon from hand even removed it.
+
+| Where | What the edits do |
+|---|---|
+| Summon check | a God needs three tributable monsters before Summon/Set is offered |
+| Player's card menu | "requires **3** Tributes?", then the 1st, 2nd and 3rd picks; B goes back to the question |
+| Ultimate Offering | the same three picks for a God; the third rides in a spare byte of the chain entry |
+| CPU | a third tribute pick (`AiPickTributeMonsterExcept`) in its summon check, its summon simulation, and its summon and set steps |
+| Summon queues and executors | a third byte in the Tribute word, written by every queue so a stale third Tribute never leaks into a later summon; the Normal Summon executors remove it |
+
+The two new prompts are new strings in the relocated code, which `hookbuild.py` now allows when the unit
+had no read-only data of its own.
 
 ## Verification
 These checks run in eds-decomp's headless mGBA 0.10.5 harness: `tests/run_oracles.py`, with the `.lua` setups
@@ -99,6 +121,24 @@ Every check also runs on the original ROM, where it must fail.
 | Player Tribute Summons Slifer | pass | fails (only Card View is offered) |
 | CPU Tribute Summons Obelisk / Slifer / Ra | pass | fails |
 
+The three-Tribute build has its own suite: `run_oracles.py ... --tributes 3 --control gods.gba`. Its control
+is the two-Tribute build, where every check that tells the rules apart must fail and the shared ones must
+pass.
+
+| Check (`gods-3t.gba`) | 3-Tribute build | 2-Tribute build |
+|---|---|---|
+| Deck, password checks (4) | pass | pass |
+| Player: Slifer takes all three fodder | pass | fails (one fodder left) |
+| Player: no Summon with only two monsters | pass | fails (it summons) |
+| Player: B at the 3rd pick loses nothing | pass | (not compared) |
+| CPU: Obelisk / Slifer / Ra take all three fodder | pass | fails |
+| CPU: no God with only two fodder | pass | fails |
+| Ultimate Offering: a God takes all three | pass | fails |
+| Ultimate Offering: no God with two | pass | fails |
+| Regression: player's and CPU's Blue-Eyes still take two | pass | pass |
+
+In a duel without Gods, the two builds' EWRAM and frame timing are identical.
+
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
   Slifer.
@@ -113,7 +153,6 @@ Also checked:
 
 ## Known limits
 - **No God effects:** no Obelisk wipe, no Slifer hand-size ATK.
-- **Two Tributes, not three:** the Gods use EDS's rule for Level 7 and up, not the TCG's three.
 - **X000 in Deck Edit:** the deck list shows the Gods' ATK and DEF as `X000`, the game's own Divine display.
   Card View and duels show 4000.
 - **A little lag:** the relocated code costs about 2 frames during the opening deal.

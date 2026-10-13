@@ -78,5 +78,28 @@
     "by": "the user",
     "date": "2026-10-13",
     "result": "summoned a God with two Tributes from the field; 4000 ATK / 4000 DEF; attacked with it"
+  },
+  "three_tributes_build": {
+    "rom_sha1": "1cb038eda3c657e4f06547adce7f775ce38b9cfa",
+    "patch": "gods-3t.bps",
+    "patch_bytes": 45617,
+    "build": {
+      "command": "scripts/build.sh <rom> <work> --tributes 3",
+      "edited_units": 45,
+      "hooks": 73,
+      "stubs": 555,
+      "blob_bytes": 226390,
+      "new_globals": [
+        "AiPickTributeMonsterExcept",
+        "QueueNormalSummonChoosePositionEx",
+        "gStrSelectThirdTribute",
+        "gStrThreeTributesPrompt"
+      ]
+    },
+    "oracles": "tests/run_oracles.py --tributes 3 --control gods.gba: 15/15 pass; every check that tells the rules apart fails on the 2-Tribute build, the shared ones pass on both",
+    "extra_checks": [
+      "God-free duel: EWRAM and frame counts identical to the 2-Tribute build at main_menu, duel_start, duel_main1, duel_turn2"
+    ],
+    "real_device": "not yet tried in Delta"
   }
 }
