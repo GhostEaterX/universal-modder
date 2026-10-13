@@ -19,6 +19,11 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - **The Winged Dragon of Ra:** when you Normal Summon it, you may pay LP until you have 100; its ATK and
     DEF become the amount paid. You can also pay 1000 LP to destroy 1 monster on the field.
   - **All three:** their Normal Summon can't be answered (no Trap Hole on a God), and they can't be Set.
+- **Pack viewer (`gods-3t-fx.bps`):** on the pick-a-pack screen after a duel, the bottom band names the pack
+  in the centre. SELECT lists every card in it, with each card's chance of being in the pack you'd get, and
+  marks the cards you don't own yet with NEW. The chances follow your save: picking the same pack as last
+  time makes rare cards less likely, and after a run of all-common packs the game guarantees a rare one. A
+  opens a card's Card Detail, and B goes back to the pick screen.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -105,7 +110,8 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `471f4347758993363e2bbaac30167f1635575c43`.
+- `gods-3t-fx.gba`: SHA-1 `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36`, with the pack viewer (the earlier one
+  without it, which the user ran in Delta, was `471f4347758993363e2bbaac30167f1635575c43`).
 
 ### How the three-Tribute build works
 `scripts/patch_three_tributes.py` runs after `patch_source.py`. The engine already had a third Tribute slot
@@ -167,6 +173,52 @@ functions automatically. `check_effect_table.py` then stops the build unless:
 | CPU | uses Obelisk when it clears more ATK than it Tributes, and Ra's destroy against a 2000+ ATK monster while it keeps more than 2000 LP; pays for Ra when that makes Ra stronger than 4000; summons Slifer only with 4+ cards in hand |
 | Card text | the Gods' text in Card View describes the effects (data, in place) |
 
+### How the pack viewer works
+`scripts/patch_pack_viewer.py` runs last, in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
+the decomp as a new unit, writes its odds table from your ROM's pack lists, and makes 6 anchored edits in 4
+files. The plan, with the research on how the game makes a pack, is `PLAN-pack-viewer.md`.
+
+```
+ pick-a-pack screen                        the pack's cards                         Card Detail
+ ┌────────────────────────────────────┐    ┌──────────────────────────────────┐    ┌────────────┐
+ │   [pack]      [PACK]      [pack]   │    │ Vol.1                            │    │  the card  │
+ │                                    │ ─▶ │ 40 cards  rare card 35.6%        │ ─▶ │            │
+ │               Vol.1                │ ◀─ │ % = chance it's in your pack     │ ◀─ │ LEFT/RIGHT:│
+ │ 40 cards  -  SELECT: cards and odds│    │ ▣ Dark Magician       NEW  4.5%  │    │ next card  │
+ └────────────────────────────────────┘    │ ▣ Gaia The Fierce...  NEW  4.5%  │    └────────────┘
+  SELECT ─▶, B ◀─                           │ ▣ Dark Hole           NEW  2.2%  │     A ─▶, B ◀─
+  LEFT/RIGHT slide and A picks, as before   └──────────────────────────────────┘
+                                             UP/DOWN: a card, LEFT/RIGHT: a page
+```
+
+**How a pack is made** (`GeneratePackCards`), and so what the odds mean:
+1. A rarity roll, `Random() % 180`, picks one of the pack's 8 slots (0 is the rarest, 7 the commons). It
+   becomes `% 270` when you pick the same pack as last time, which makes every rare slot 2/3 as likely. After
+   more than 5 packs in a row that fell back to commons (more than 10 for the same pack again), it becomes
+   `% 12`, which always lands in a rare slot.
+2. One card from the rolled slot.
+3. Four commons: the first four of a copy of the commons slot after 2N random swaps, skipping the rolled
+   card. 2N swaps don't shuffle evenly, so the first commons in the game's list come up a little more often
+   (Vol.1: 16.8% instead of 15.3%).
+
+`scripts/gen_pack_odds.py` computes each card's chance exactly: the slot sums use the RNG's 15-bit modulo
+weights, and the commons use two small Markov chains (one card's position after the swaps, and the pair
+card + rolled card). It checks the chains against brute force (`--selftest`), and a simulation of the game's
+algorithm with its own RNG agrees on all 2,982 numbers (`--simulate 400000`: 23 packs × 3 rolls). The table
+is generated at build time and never committed, like the effect table. `--show <pack id>` prints a pack's
+list.
+
+| Where | What the edits do |
+|---|---|
+| `PackList_HandleInput` | SELECT opens the viewer (unless the covers are sliding) |
+| `GetPack_SelectAndGenerate` | the viewer runs on new sub-states (0x20 and up), before the pack is made |
+| `PackList_Init` | back from the viewer, the same pack is in the centre |
+| `PackList_DrawCovers` | the band text, drawn into the pick screen's 4bpp text layer |
+| `GetPack_DrawCardRow` | in the viewer, a canvas clear of the row's 3 KB instead of 64 KB (3 frames per row) |
+
+The list is the opening scene: its video setup, its row drawer and its Card Detail steps. To avoid tearing,
+a scroll moves the four rows that stay in the VBlank callback and draws only the new one, while it is blank.
+
 ## Verification
 These checks run in eds-decomp's headless mGBA 0.10.5 harness: `tests/run_oracles.py`, with the `.lua` setups
 next to it. Each check sets up the duel through RAM, plays with scripted keys and reads the result from RAM.
@@ -226,6 +278,29 @@ In God-free library states, from the title screen through a full player and CPU 
 and without effects. IWRAM differs only in the audio DMA buffer and the stack. In Delta on iOS the user ran
 `gods-3t-fx` and summoned Ra.
 
+The pack viewer has its own suite, `--pack-viewer` (with `--tributes 3 --effects`, control `gods-3t.gba`). It
+wins a duel at once from the `duel_turn2` library state to reach the pick screen. The logger reads the odds,
+NEW and header text back off the screen (the BG0 map and the glyph tiles in VRAM), and the expected odds come
+from your own `booster_packs.json`. The two pick checks pin the RNG when the pick starts, because the
+viewer's text costs a lag frame, and the game's RNG ticks once per frame.
+
+| Check (`gods-3t-fx.gba`) | Viewer build | Build without it |
+|---|---|---|
+| The band names the centre pack | pass | fails |
+| SELECT opens the centre pack's list (Vol.1, 40 cards + header) | pass | fails |
+| Header and odds, normal roll ("rare card 35.6%", Dark Magician 4.5%) | pass | fails |
+| Scrolling through all 40 cards: each one in order, with its odds on screen | pass | fails |
+| Same pack again: the header says so, rare card 23.8%, Dark Magician 3.0% | pass | fails |
+| Pity roll: a rare for sure, Dark Magician 50.0% | pass | fails |
+| Same pack with pity 6 is still "same pack"; with 11 it is the pity roll | pass | fails |
+| NEW on a card you don't own; gone once it is in your trunk | pass | fails |
+| Card Detail from the list, RIGHT to the next card, B back to it in the list | pass | fails |
+| B goes back with the same pack in the centre, and A picks it: the same 5 cards as the original game | pass | pass |
+| Regression: a pick without SELECT gives the same 5 cards | pass | pass |
+
+Not yet checked for the viewer: a real device, and packs other than Vol.1-3 in the emulator (the test save
+unlocks only those; the other 20 lists come from the same table and code).
+
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
   Slifer.
@@ -240,6 +315,12 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
+- **Pack viewer only in `gods-3t-fx`,** and only on the pick-a-pack screen: the fixed packs some event duels
+  give skip that screen.
+- **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
+  pity counter changes after each pack.
+- **A little lag:** drawing the pack name costs about 1 frame when the pick screen opens and when the
+  covers stop sliding.
 - **Effects not built:** a Special Summoned Obelisk or Slifer doesn't go to the graveyard in the End Phase,
   and Ra can still be Special Summoned (both TCG rules).
 - **Obelisk's immunity uses the game's shared target check.** So a Tribute picked through it, Cannon

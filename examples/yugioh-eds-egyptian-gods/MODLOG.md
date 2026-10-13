@@ -227,3 +227,44 @@
   pressing A through the win dialogue. `--until` didn't fire under `emu.py lua`, so a frame-timed key list
   stops the A presses before the list.
 - **Next:** the user's choices (button, row style, live or base odds, names, extras, builds).
+
+## 2026-10-13: pack viewer, built (in `gods-3t-fx`)
+- **User's decisions:** the recommendations (SELECT, the opening scene's rows, live odds, full names, the NEW
+  mark), only in `gods-3t-fx`.
+- **Code:**
+  - `src/pack_viewer.c`, a new unit;
+  - `scripts/patch_pack_viewer.py`, with 6 anchored edits in 4 files: SELECT, the viewer's sub-states, the
+    kept centre pack, the band text and the row drawer's canvas clear;
+  - `scripts/gen_pack_odds.py`, which writes the odds table into the tree from its own `booster_packs.json`.
+- **Odds model:**
+  - The rarity roll and the rolled card are exact sums over the 15-bit `Random()`'s modulo weights.
+  - The 4 commons come from two Markov chains propagated backwards: one card's position after the 2N
+    transpositions, and the pair (card, rolled card).
+  - Checked against brute force over all permutations (N = 5, 6, uneven weights): error 1e-15.
+  - A numpy simulation of `GeneratePackCards` with the game's LCG agrees on 2,982 odds (23 packs × 3 rolls,
+    400,000 packs each): max |z| 3.5, as noise predicts.
+- **Gotcha, the pick screen's BG0 is 4bpp:** `PackList_InitVideo` sets BG0 to 8bpp, but `ResetVideo` right
+  after resets it to `4` (4bpp, char block 1). 8bpp text came out as cover pixels. The band text is 4bpp
+  tiles in the tile buffer's bytes after the four covers (8bpp tile 0x198 = 4bpp tile 0x330), palette bank
+  14 of `gPackListPal`, where 235 is white and 233 pale yellow.
+- **Gotcha, `TextCanvasInit` clears 64 KB:** about 3 frames per call, so redrawing 5 rows took 15 frames. In
+  the viewer (`seqIndex1 == 0`, `seqState1 >= 0x20`) the row drawer clears only the row's 3 KB. The opening
+  scene keeps the original call.
+- **Gotcha, tearing:** `MainLoop` copies the BG maps and OAM in `FrameSyncUpdate` at VBlank, and only then runs
+  the scene, which reaches the visible frame. Tile and palette writes show at once, map writes a frame
+  later. So:
+  - a row is drawn after its VRAM map lines are blanked;
+  - a scroll's four row moves (tiles, icon palettes) run in `gMain.vblankCallback`, and only the new row is
+    drawn, a frame later;
+  - sprites are queued after the change.
+  The screenshots show no mixed frames.
+- **Gotcha, the Latin font is fixed-width:** half the font size per character (5 px at size 10, in
+  `TextDrawLatinString`), so centring needs no measuring draw.
+- **Gotcha, frame-timed tests and the RNG:** `FrameSyncUpdate` calls `Random()` once per main-loop pass. A
+  lag frame (the band text costs about 1 at the list's start) moves every later key press to another RNG
+  state, so the same keys pick a different pack. The regression oracles pin `rngState` when the pick starts
+  its fade-out; then the viewer build and the build without it generate the same 5 cards, with or without a
+  trip through the viewer.
+- **Oracles (`--pack-viewer`, `tests/pack_viewer.lua`):** 13 checks. The logger reads the odds, NEW and header
+  text back from the BG0 map and the VRAM glyph tiles, against the game's 8x8 bold font. Every viewer check
+  fails on the build without the viewer, and the two pick checks pass on both.

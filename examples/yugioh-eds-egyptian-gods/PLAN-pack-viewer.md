@@ -4,8 +4,10 @@
 opens a list of every card in that pack. Each card shows its chance of being in the pack you'd get. From the
 list you can open any card's Card Detail and go back to the pick screen.
 
-**Status: plan only. Nothing is built.** It waits for the user's choices (below). Everything here was read
-in eds-decomp `857002a` and checked in the headless emulator.
+**Status: built, in `gods-3t-fx` only** (the user's choices are under "Decisions"). Everything here was read
+in eds-decomp `857002a` and checked in the headless emulator. The code is `src/pack_viewer.c`,
+`scripts/patch_pack_viewer.py` and `scripts/gen_pack_odds.py`; the README has how it works and its checks.
+Where the build differs from this plan, "As built" at the end says so.
 
 ## 1. How the pack reward works today
 ```
@@ -156,7 +158,7 @@ About two sessions:
 - the list scene;
 - the oracles and docs.
 
-## Decisions (waiting for the user)
+## Decisions (the user: "go with your recommendations, build it as gods-3t-fx")
 1. **Button:** SELECT (recommended: unused, and doesn't clash with A to pick) or R?
 2. **Row style:** the game's pack-opening rows, 5 per screen with picture frame and stats (recommended), or a
    compact text list, about 9 per screen?
@@ -171,3 +173,28 @@ About two sessions:
    - percentages on the opening screen for the cards you just got;
    - the same list for the fixed event packs (they skip the pick screen).
 6. **Builds:** in all four builds (new versions of each), or only `gods-3t-fx`, the one you play?
+
+Chosen: SELECT; the game's pack-opening rows; live odds, no per-slot summary; full pack names; only the
+"not owned" mark; only `gods-3t-fx`.
+
+## As built
+- **The pick screen's text** went in BG0, which `ResetVideo` leaves as a 4bpp layer on the covers' char
+  block, in the tile buffer's bytes after the four covers. Two lines in the 10-pixel font: the full name,
+  and "40 cards - SELECT: cards and odds".
+- **The header** is the list's first row: the name, the card count and the chance of a rare card, and a line
+  for the roll ("% = chance it's in your pack", "Same pack again: rares x2/3", "Lucky pack: a rare for
+  sure").
+- **Rows:** the opening scene's `GetPack_DrawCardRow`, plus the odds (5 characters, e.g. "16.8%", "0.42%")
+  and a yellow "NEW". The rare-slot cards' names use the opening scene's colour-cycled rare colour.
+- **Keys:** UP/DOWN move and scroll one card, LEFT/RIGHT a page, A Card Detail (where LEFT/RIGHT step
+  through the list), B or SELECT back.
+- **Speed and tearing**, which the plan didn't foresee:
+  - `TextCanvasInit` clears the whole 64 KB canvas, about 3 frames a row, so in the viewer the row drawer
+    clears only the row's tiles;
+  - the scene runs mid-frame, after the main loop's VBlank copies, so a scroll moves the rows' tiles in the
+    VBlank callback and draws only the new row, while it is blank.
+- **The odds model** is exact (two Markov chains, checked against brute force), and a simulation of the
+  game's own algorithm and RNG agrees on all 2,982 odds (23 packs, 3 rolls, 400,000 packs each; max |z| 3.5).
+  The emulator count check from section 6 wasn't needed: the simulation runs the matching decomp's code,
+  and the oracles check what the screen shows against the table.
+

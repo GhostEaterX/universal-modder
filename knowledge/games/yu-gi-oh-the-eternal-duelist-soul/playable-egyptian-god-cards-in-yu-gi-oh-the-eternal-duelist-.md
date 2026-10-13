@@ -16,7 +16,7 @@ date: 2026-10-13
 links:
   - https://github.com/CosmicScribe64/eds-decomp
   - https://github.com/rehan-remade/universal-modder/tree/main/examples/yugioh-eds-egyptian-gods
-tags: [gba, decomp, rom-hack, bps, function-hooks, trampolines, card-game, ai, delta, mgba, headless-oracle]
+tags: [gba, decomp, rom-hack, bps, function-hooks, trampolines, card-game, ai, delta, mgba, headless-oracle, booster-packs, drop-rates, ui]
 ---
 
 # Playable Egyptian God cards in Yu-Gi-Oh! The Eternal Duelist Soul via eds-decomp and function hooks
@@ -164,6 +164,29 @@ confirmed this build works in Delta on iOS too.
   without effects. In Delta on iOS the user ran the three-Tribute effects
   build and summoned Ra.
 
+### In the fourth build: a pack viewer with odds
+`gods-3t-fx` also gets `patch_pack_viewer.py`. On the pick-a-pack screen after a duel, the bottom band names
+the centre pack, and SELECT lists its cards with each card's chance of being in the pack you'd get.
+- **How a pack is made** (`GeneratePackCards`):
+  - a rarity roll `Random() % 180` over 8 slots with cumulative thresholds `{1,3,6,10,16,28,64,180}`
+    (`% 270` when you pick the same pack as last time; `% 12`, a sure rare, after more than 5 commons-only
+    packs, more than 10 on the same pack);
+  - one card from the rolled slot;
+  - four commons: the first four of a copy of the commons after 2N random swaps, skipping the rolled card.
+- **The odds:**
+  - 2N swaps isn't a uniform shuffle: the first commons of the list come up about 10% more often.
+  - The exact chance comes from two backward-propagated Markov chains: one card's position, and the pair
+    (card, rolled card). Checked against brute force over all permutations.
+  - A simulation of the decomp's algorithm with the game's LCG (`x = s * 0x343FD + 0x269EC3`, rotated by 16;
+    15-bit output) agreed on all 2,982 odds.
+  - The table is generated at build time from the user's `booster_packs.json`, like the effect table.
+- **The list** reuses the opening scene: `GetPack_InitScene`, `GetPack_DrawCardRow` and the Card Detail steps.
+  It runs on new sub-states (0x20+) of `GetPack_SelectAndGenerate`, and keeps its state in `gPackOpenWork`,
+  which is cleared before a pack is made.
+- **Checks:** 13 oracles (`--pack-viewer`). The logger reads the odds, NEW and header text off the screen (BG0
+  map plus VRAM glyph tiles, against the game's 8x8 bold font). With the RNG pinned at the pick, the viewer
+  build and the build without it generate the same 5 cards, even after a trip through the viewer.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -236,6 +259,29 @@ confirmed this build works in Delta on iOS too.
     Battle Phase, then the monster's second command (Attack).
 17. **Removing a menu command shifts the keys.** Without Set, a God's hand menu is Card View / Summon, and
     two RIGHTs wrap back to Card View. Keep a separate key list per build.
+18. **The pick screen's BG0 is 4bpp, not the 8bpp `PackList_InitVideo` writes.**
+    - **Cause:** `ResetVideo`, called right after, sets `REG_BG0CNT = 4`. 8bpp text tiles showed up as
+      cover pixels.
+    - **Fix:** draw 4bpp tiles into the tile buffer's bytes after the four covers (4bpp tile 0x330), with
+      palette bank 14 of `gPackListPal` (235 white, 233 pale yellow).
+19. **`TextCanvasInit` clears the whole 64 KB canvas: about 3 frames.**
+    - **Effect:** redrawing 5 list rows took 15 frames.
+    - **Fix:** in the viewer only, the row drawer clears just the rows' tiles (`CpuFastSet`). The opening
+      scene keeps the original, so its timing doesn't change.
+20. **The scene runs mid-frame, so VRAM tile writes tear.**
+    - **Cause:** `MainLoop` copies the BG maps and OAM in `FrameSyncUpdate` at VBlank, then runs the scene.
+      Map changes show a frame later, tile and palette changes at once.
+    - **Fix:**
+      - blank a row's VRAM map lines before drawing it;
+      - move scrolled rows' tiles in `gMain.vblankCallback`;
+      - queue sprites after the change.
+21. **The Latin text font is fixed-width:** half the font size per character (`TextDrawLatinString`).
+    Centring needs no measuring pass.
+22. **Lag frames change frame-timed RNG results.**
+    - **Cause:** `FrameSyncUpdate` calls `Random()` once per main-loop pass, so one extra lag frame moves
+      every later key press to a different RNG state.
+    - **Fix:** to compare two builds' packs, pin `gMain.rngState` (`0x03000040`) when the pick's fade-out
+      starts.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the
@@ -243,7 +289,7 @@ patch.
 
 ## Cost and time
 One session: recon, then toolchain, data, code, hooks, oracles, a showcase clip and docs, in a few hours of
-wall-clock. The three-Tribute build and the effects builds took one session each. A build takes about 1
+wall-clock. The three-Tribute build, the effects builds and the pack viewer took one session each. A build takes about 1
 minute; an oracle suite with its control takes a few minutes.
 
 ## Open questions

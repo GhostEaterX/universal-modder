@@ -4,7 +4,7 @@
     run_oracles.py <eds-decomp checkout> <gods.gba>    [--control original.gba]        # 2-Tribute build
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
-    run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects [--control gods-3t.gba]
+    run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -18,10 +18,14 @@ checks also run on a control ROM, where each check says what must happen there:
     regressions (ordinary cards whose effects go through the relocated table) must pass. The effects suite
     also runs its build's base suite, uncompared; in it a God's hand menu has no Set, so the God summons
     take one RIGHT less.
+  - with --pack-viewer, the same control for the pack viewer suite (pack_viewer.lua): every viewer check
+    must fail there, and the pick must give the same pack as there. The expected odds come from the
+    checkout's own booster_packs.json, through scripts/gen_pack_odds.py.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -105,6 +109,86 @@ SKULL_KEYS = "15 A; 45 RIGHT; 55 RIGHT; 70 A; 260 A; 330 A; 400 A; 620 A; 800 A;
 TTTD_KEYS = "15 A; 60 RIGHT; 100 RIGHT; 140 A; 450 A; 600 A; 660 UP; 700 UP; 740 UP; 780 A"
 CARD_TEXT = b"Requires %d Tributes to Normal Summon (cannot be Normal Set)."
 GODS = ("817", "818", "819")
+
+
+PV = "pack_viewer.lua"
+# duel_turn2 -> Battle Phase, Blue-Eyes attacks the CPU at 1 LP, A through the win: the pick screen by f2000
+WIN_KEYS = "20 B; 80 A; 380 A; 430 RIGHT; 470 A; 560 A; 650 A; 750 A; 1300-1960/60 A"
+PIN = {"PIN_RNG": "1234ABCD"}
+VANILLA_PACK = r"generated pack=2 cards=79,177,339,154,117"   # Vol.2 from RNG state 0x1234ABCD
+
+
+def odds_text(units):
+    """FormatOdds (src/pack_viewer.c) of a chance in 0.01% steps."""
+    if units == 0:
+        return "   0%"
+    if units < 100:
+        return f"0.{units // 10}{units % 10}%"
+    t = (units + 5) // 10
+    if t >= 1000:
+        return " 100%"
+    return f"{t // 100 if t >= 100 else ' '}{t // 10 % 10}.{t % 10}%"
+
+
+def pack_table(decomp, pack_id):
+    """The viewer's list for a pack, from the checkout's booster_packs.json: [(card number, odds per mode)],
+    and the rare chance per mode, in 0.01% steps."""
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    import gen_pack_odds as g
+    with open(decomp / "assets/tables/rodata2/booster_packs.json") as f:
+        pack = next(p for p in g.listed_packs(json.load(f)) if p["id"] == pack_id)
+    odds, rare = g.pack_odds(pack)
+    slot = g.rarest_slot(pack)
+    order = sorted(odds, key=lambda c: slot[c])
+    return [(c, [g.units(x) for x in odds[c]]) for c in order], [g.units(x) for x in rare]
+
+
+def header_re(decomp, pack_id, mode):
+    cards, rare = pack_table(decomp, pack_id)
+    line4 = ["% = chance it's in your pack", "Same pack again: rares x2/3", "Lucky pack: a rare for sure"][mode]
+    first = cards[0]
+    return (re.escape(f"header '{len(cards)} cards  rare card {odds_text(rare[mode]).lstrip()}' '{line4}'")
+            + r"[\s\S]*" + re.escape(f"cursor e=1 n={first[0]} odds='{odds_text(first[1][mode])}'"))
+
+
+def list_re(decomp, pack_id, mode):
+    cards, _ = pack_table(decomp, pack_id)
+    return r"[\s\S]*".join(re.escape(f"cursor e={e} n={c} odds='{odds_text(o[mode])}' new=") + "[01]"
+                            for e, (c, o) in enumerate(cards, 1))
+
+
+def pv_suite():
+    sel = WIN_KEYS + "; 2100 SELECT"
+    return [
+        check("viewer: the band names the centre pack", PV, "duel_turn2", 2100, WIN_KEYS, {},
+              r"pick centre=1 band=1"),
+        check("viewer: SELECT opens the centre pack", PV, "duel_turn2", 2200, sel, {},
+              r"view pack=1 entries=41 mode=0 top=0 row=1"),
+        check("viewer: header and odds, normal roll", PV, "duel_turn2", 2200, sel, {},
+              lambda d: header_re(d, 1, 0)),
+        check("viewer: every card in order, with its odds", PV, "duel_turn2", 2800, sel + "; 2200-2700/12 DOWN",
+              {}, lambda d: list_re(d, 1, 0)),
+        check("viewer: same pack again, rares 2/3", PV, "duel_turn2", 2200, sel, {"LAST_PACK": "1"},
+              lambda d: header_re(d, 1, 1)),
+        check("viewer: pity roll, a rare for sure", PV, "duel_turn2", 2200, sel, {"PITY": "6"},
+              lambda d: header_re(d, 1, 2)),
+        check("viewer: same pack, pity needs 11", PV, "duel_turn2", 2200, sel, {"LAST_PACK": "1", "PITY": "6"},
+              lambda d: header_re(d, 1, 1)),
+        check("viewer: same pack, pity at 11", PV, "duel_turn2", 2200, sel, {"LAST_PACK": "1", "PITY": "11"},
+              lambda d: header_re(d, 1, 2)),
+        check("viewer: NEW on a card you don't own", PV, "duel_turn2", 2200, sel, {},
+              r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=1"),
+        check("viewer: no NEW once you own it", PV, "duel_turn2", 2200, sel, {"OWN": "34"},
+              r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=0"),
+        check("viewer: Card Detail, RIGHT, back to the list", PV, "duel_turn2", 2600,
+              sel + "; 2200 A; 2350 RIGHT; 2450 B", {},
+              r"detail n=34[\s\S]*detail n=37[\s\S]*view pack=1 entries=41 mode=0 top=0 row=2"),
+        check("viewer: back with the same pack, which A picks", PV, "duel_turn2", 2600,
+              WIN_KEYS + "; 2100 RIGHT; 2160 SELECT; 2300 DOWN; 2400 B; 2500 A", PIN, VANILLA_PACK,
+              control="passes"),
+        check("regression: a pick without SELECT", PV, "duel_turn2", 2400, WIN_KEYS + "; 2100 RIGHT; 2200 A",
+              PIN, VANILLA_PACK, control="passes"),
+    ]
 
 
 def no_set(keys):
@@ -201,7 +285,8 @@ def run_all(decomp, rom, tag, checks, control=False):
                         f"{states}/{c['state']}.ss", "--frames", str(c["frames"]), "--keys", keys,
                         "--out", f"oracle-{tag}-{i}", env=c["env"])
         log = "\n".join(l for l in out.splitlines() if l.startswith("[lua]"))
-        results.append((bool(re.search(c["regex"], log)) == c["must"], log))
+        regex = c["regex"](decomp) if callable(c["regex"]) else c["regex"]
+        results.append((bool(re.search(regex, log)) == c["must"], log))
     return results
 
 
@@ -214,6 +299,7 @@ def main():
     ap.add_argument("--control", type=Path,
                     help="the original ROM (2-Tribute suite), the 2-Tribute build (3-Tribute suite), or the "
                          "build without effects (effects suites)")
+    ap.add_argument("--pack-viewer", action="store_true", help="the ROM has the pack viewer (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -221,6 +307,9 @@ def main():
     if args.effects:
         checks = fx_suite(args.tributes) + base_on_fx(checks)
         tag += "fx"
+    if args.pack_viewer:
+        checks = checks + pv_suite()
+        tag += "pv"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

@@ -249,5 +249,108 @@
       "patch": "gods-3t-fx.bps",
       "result": "works: the user summoned Ra"
     }
+  },
+  "pack_viewer": {
+    "decisions": "SELECT on the pick-a-pack screen opens the centre pack's list; the pack-opening scene's rows, 5 per screen; live odds for the next pick (normal, same pack again, pity); full pack names; a NEW mark on cards not owned; only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "000ae97d786f1d922dd31a8d74f38a5e1ab9ae36",
+      "patch_bytes": 62033,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer"
+      ],
+      "edited_units": 50,
+      "hooks": 91,
+      "stubs": 606,
+      "blob_bytes": 279478,
+      "same_bytes_as_previous_gods_3t_fx_below_0x08800000": true,
+      "reproducible": "fresh work dir; gods-3t rebuilt in the same run matches its published SHA-1"
+    },
+    "odds_model": {
+      "generator": "scripts/gen_pack_odds.py (from the tree's booster_packs.json at build time; not committed)",
+      "selftest": "Markov chains vs brute force over all permutations, N = 5 and 6 with uneven RNG weights: max error 7.8e-16",
+      "simulation": "GeneratePackCards with the game's Random() (numpy, 400,000 packs per pack and roll): 2,982 card odds (23 packs x 3 rolls), max |sim - model| 0.256 points, max |z| 3.48"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --control gods-3t.gba",
+    "suite_result": "ALL OK: 18 effect checks, 15 base checks, 13 viewer checks",
+    "oracles": [
+      {
+        "check": "viewer: the band names the centre pack",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: SELECT opens the centre pack",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: header and odds, normal roll",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: every card in order, with its odds",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack again, rares 2/3",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: pity roll, a rare for sure",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack, pity needs 11",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack, pity at 11",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: NEW on a card you don't own",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: no NEW once you own it",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: Card Detail, RIGHT, back to the list",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: back with the same pack, which A picks",
+        "viewer_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "regression: a pick without SELECT",
+        "viewer_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: the band on the pick screen, the list header, rows with odds and NEW, a scroll, a page, Card Detail with LEFT/RIGHT, back to the pick screen with the same pack, the pick still opening a pack",
+      "no mixed frames in per-frame screenshots of scrolls (rows move in the VBlank callback; a redrawn row is blank until drawn)",
+      "with gMain.rngState pinned at the pick, the viewer build and the build without it generate the same 5 cards, with or without a trip through the viewer"
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "packs other than Vol.1-3 in the emulator (the save in the harness unlocks only those; the other 20 lists come from the same table and code)"
+    ]
   }
 }
