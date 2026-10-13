@@ -141,3 +141,8 @@
   are identical at every library state. The 2-Tribute suite is still 8/8 vs the original.
 - **Showcase:** a 23 s clip of the three-Tribute summon, sent to the user.
 - **Next:** the user tries `gods-3t` in Delta.
+
+## 2026-10-13: three Tributes on a real device
+- **Delta on iOS (user's test):** the 3-Tribute build works. Both builds are now confirmed on the user's
+  device.
+- **Next:** the user's call: a PR (fork `main` or upstream), God effects.

@@ -100,6 +100,11 @@
     "extra_checks": [
       "God-free duel: EWRAM and frame counts identical to the 2-Tribute build at main_menu, duel_start, duel_main1, duel_turn2"
     ],
-    "real_device": "not yet tried in Delta"
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-13",
+      "result": "works"
+    }
   }
 }

@@ -7,7 +7,7 @@ whether "Summon" is offered at all.
 
 **Status: built and verified.** `scripts/build.sh ... --tributes 3` → `gods-3t.bps`. All 15 checks of
 `tests/run_oracles.py --tributes 3` pass, and the ones that tell the rules apart fail on the two-Tribute
-build. Not yet tried in Delta.
+build. The user confirmed it works in Delta on iOS.
 
 **Decisions (the user's):** ship both builds, and give Ultimate Offering the three-Tribute rule too.
 

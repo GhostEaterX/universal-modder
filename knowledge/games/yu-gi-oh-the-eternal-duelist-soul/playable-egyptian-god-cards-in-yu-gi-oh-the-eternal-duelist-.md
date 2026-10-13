@@ -132,7 +132,8 @@ too, not only in mGBA. Not checked in Delta: the CPU summoning a God, and the pa
 - **The AI** picks three, through a new `AiPickTributeMonsterExcept`.
 
 Suite: 15 oracles, run with the 2-Tribute build as the control. The rule-discriminating ones fail there, and
-the Blue-Eyes regressions pass on both. In a God-free duel the two builds' EWRAM is identical.
+the Blue-Eyes regressions pass on both. In a God-free duel the two builds' EWRAM is identical. The user
+confirmed this build works in Delta on iOS too.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

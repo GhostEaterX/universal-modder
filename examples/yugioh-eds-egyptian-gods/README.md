@@ -137,7 +137,8 @@ pass.
 | Ultimate Offering: no God with two | pass | fails |
 | Regression: player's and CPU's Blue-Eyes still take two | pass | pass |
 
-In a duel without Gods, the two builds' EWRAM and frame timing are identical.
+In a duel without Gods, the two builds' EWRAM and frame timing are identical. The user also confirmed the
+three-Tribute build works in Delta on iOS.
 
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
