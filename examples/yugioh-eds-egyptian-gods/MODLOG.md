@@ -209,3 +209,21 @@
   own: each `-fx` patch includes its base build's changes and goes onto the original ROM.
 - **Next:** the user's call: a PR (fork `main` or upstream), the End Phase trait, "Ra can't be Special
   Summoned".
+
+## 2026-10-13: pack viewer, planning
+- **User's ask:** after a duel, see what each pack on the pick-a-pack screen contains, with each card's odds.
+  The plan is `PLAN-pack-viewer.md`; nothing is built yet.
+- **Flow:** `Campaign_GiveRewards` either gives an event duel's fixed pack (`GetRewardPack`, no list) or runs
+  `CB_GetPack`. That is the list of unlocked packs (`IsPackUnlocked`, at most 23 with covers), then
+  `GeneratePackCards`, then the 5-card opening scene. The pick screen reads only LEFT, RIGHT and A, and shows
+  no pack names.
+- **Odds:**
+  - the first card comes from the rolled slot: thresholds `{1,3,6,10,16,28,64,180}` out of 180, or 270 when
+    you pick the same pack as last time; a pity rule switches to `% 12` after more than 5 commons-only packs;
+  - the other four are the first four of a 2×N-swap shuffle of the commons, which isn't uniform. In a
+    300,000-pack simulation of Vol.1 the first four commons came out at about 16.8% each, the rest about
+    15.2%.
+- **Harness:** the pick-a-pack screen is reached from `duel_turn2` by giving the CPU 1 LP and attacking, then
+  pressing A through the win dialogue. `--until` didn't fire under `emu.py lua`, so a frame-timed key list
+  stops the A presses before the list.
+- **Next:** the user's choices (button, row style, live or base odds, names, extras, builds).
