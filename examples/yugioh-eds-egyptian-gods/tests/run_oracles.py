@@ -49,11 +49,12 @@ OFFERING_KEYS = ("20 UP; 50 A; 80 RIGHT; 100 A; 780 A; 850 A; 950 A; 1030 A; 110
                  "1450 RIGHT; 1470 A; 1600 A; 1650 RIGHT; 1670 A; 1850 A; 1950 A; 2100 A")
 
 
-def check(name, script, state, frames, keys, env, regex, must=True, control="fails", ckeys=None):
+def check(name, script, state, frames, keys, env, regex, must=True, control="fails", ckeys=None, verify=None):
     """must: the regex must (True) or must not (False) match. control: 'fails' / 'passes' / None.
-    script None: regex is bytes the ROM file itself must contain."""
+    script None: regex is bytes the ROM file itself must contain. regex may be a function of the checkout
+    (expected values from its data). verify(log): an extra test of the log, ANDed with the regex."""
     return dict(name=name, script=script, state=state, frames=frames, keys=keys, env=env, regex=regex,
-                must=must, control=control, ckeys=ckeys)
+                must=must, control=control, ckeys=ckeys, verify=verify)
 
 
 COMMON = [
@@ -147,7 +148,7 @@ def header_re(decomp, pack_id, mode):
     cards, rare = pack_table(decomp, pack_id)
     line4 = ["% = chance it's in your pack", "Same pack again: rares x2/3", "Lucky pack: a rare for sure"][mode]
     first = cards[0]
-    return (re.escape(f"header '{len(cards)} cards  rare card {odds_text(rare[mode]).lstrip()}' '{line4}'")
+    return ("header '" + r"\d+" + re.escape(f"/{len(cards)} owned  rare card {odds_text(rare[mode]).lstrip()}' '{line4}'")
             + r"[\s\S]*" + re.escape(f"cursor e=1 n={first[0]} odds='{odds_text(first[1][mode])}'"))
 
 
@@ -155,6 +156,14 @@ def list_re(decomp, pack_id, mode):
     cards, _ = pack_table(decomp, pack_id)
     return r"[\s\S]*".join(re.escape(f"cursor e={e} n={c} odds='{odds_text(o[mode])}' new=") + "[01]"
                             for e, (c, o) in enumerate(cards, 1))
+
+
+def owned_matches_rows(log):
+    """The header's owned count equals the rows without NEW, over a scroll through the whole list."""
+    header = re.search(r"header '(\d+)/(\d+) owned", log)
+    rows = dict(re.findall(r"cursor e=(\d+) n=\d+ odds='[^']*' new=([01])", log))   # the last line per row wins
+    return bool(header) and len(rows) == int(header.group(2)) and \
+        sum(v == "0" for v in rows.values()) == int(header.group(1))
 
 
 def pv_suite():
@@ -168,6 +177,8 @@ def pv_suite():
               lambda d: header_re(d, 1, 0)),
         check("viewer: every card in order, with its odds", PV, "duel_turn2", 2800, sel + "; 2200-2700/12 DOWN",
               {}, lambda d: list_re(d, 1, 0)),
+        check("viewer: owned count = the rows without NEW", PV, "duel_turn2", 2800, sel + "; 2200-2700/12 DOWN",
+              {"OWN": "34,335"}, r"header '\d+/40 owned", verify=owned_matches_rows),
         check("viewer: same pack again, rares 2/3", PV, "duel_turn2", 2200, sel, {"LAST_PACK": "1"},
               lambda d: header_re(d, 1, 1)),
         check("viewer: pity roll, a rare for sure", PV, "duel_turn2", 2200, sel, {"PITY": "6"},
@@ -178,8 +189,8 @@ def pv_suite():
               lambda d: header_re(d, 1, 2)),
         check("viewer: NEW on a card you don't own", PV, "duel_turn2", 2200, sel, {},
               r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=1"),
-        check("viewer: no NEW once you own it", PV, "duel_turn2", 2200, sel, {"OWN": "34"},
-              r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=0"),
+        check("viewer: x1 instead of NEW once you own it", PV, "duel_turn2", 2200, sel, {"OWN": "34"},
+              r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=0 mark='x1'"),
         check("viewer: Card Detail, RIGHT, back to the list", PV, "duel_turn2", 2600,
               sel + "; 2200 A; 2350 RIGHT; 2450 B", {},
               r"detail n=34[\s\S]*detail n=37[\s\S]*view pack=1 entries=41 mode=0 top=0 row=2"),
@@ -286,7 +297,8 @@ def run_all(decomp, rom, tag, checks, control=False):
                         "--out", f"oracle-{tag}-{i}", env=c["env"])
         log = "\n".join(l for l in out.splitlines() if l.startswith("[lua]"))
         regex = c["regex"](decomp) if callable(c["regex"]) else c["regex"]
-        results.append((bool(re.search(regex, log)) == c["must"], log))
+        found = bool(re.search(regex, log)) and (c["verify"] is None or c["verify"](log))
+        results.append((found == c["must"], log))
     return results
 
 

@@ -3,7 +3,7 @@
  *
  * On the pick-a-pack screen after a duel, the bottom band names the centre pack. SELECT opens a list of every
  * card in it, rarest slot first. Each row is drawn like a row of the pack-opening scene, plus the chance that
- * the card is in the pack you'd get and a NEW mark on cards you don't own. The odds follow the save: picking
+ * the card is in the pack you'd get, and NEW on cards you don't own (else how many copies you have). The odds follow the save: picking
  * the same pack as last time makes the rare slots 2/3 as likely, and the pity roll guarantees a rare card.
  * A opens Card Detail (LEFT/RIGHT go through the list), and B goes back to the pick screen with the same pack
  * in the centre.
@@ -45,6 +45,7 @@ struct PackViewWork {
     u8 mode;                /* odds column: PACKVIEW_ODDS_* */
     s8 moveDir;             /* rows whose tiles move at the next VBlank: 1 up, -1 down, 0 none */
     u8 dirty;               /* rows still to draw, one per frame (bit n = row n) */
+    u16 owned;              /* cards of the pack you own at least one copy of */
 };
 #define sView ((struct PackViewWork *)((u8 *)&gPackOpenWork + 4))
 typedef char pack_viewer_check_work[sizeof(struct PackViewWork) + 4 <= 0x102 ? 1 : -1];   /* commonPool */
@@ -155,6 +156,27 @@ static const struct PackViewCard *EntryCard(int entry)
     return &sPackViewCards[sPackViewPacks[v->pack].first + entry - 1];
 }
 
+/* Copies of a card you own: the trunk's spare copies plus those in the saved Deck, Side Deck and Fusion Deck
+ * (IsCardNumberOwned tests the same four fields). */
+static u32 OwnedCopies(u16 number)
+{
+    struct TrunkEntry *entry = &gSaveData.trunk[CardNumberToId(number)];
+    return entry->count + entry->deckCopies + entry->sideCopies + entry->fusionCopies;
+}
+
+/* Cards of a pack you own at least one copy of. */
+static int OwnedInPack(int pack)
+{
+    const struct PackViewCard *card = &sPackViewCards[sPackViewPacks[pack].first];
+    int n = 0;
+    int i;
+    for (i = 0; i < sPackViewPacks[pack].count; i++, card++) {
+        if (OwnedCopies(card->number) != 0)
+            n++;
+    }
+    return n;
+}
+
 /* "16.8%", " 4.4%", "0.42%", " 100%" or "   0%" for a chance in 0.01% steps. */
 static void FormatOdds(char *s, u32 odds)
 {
@@ -224,7 +246,8 @@ static char *AppendNumber(char *s, u32 n)
 #define ROW_VRAM_MAP(row)   ((u16 *)VRAM + (row) * 4 * 32)
 #define ROW_TILES(tile)     ((void *)(VRAM + 0x4000 + (tile) * 32))
 
-/* Row 0 of the list: the pack's full name, its size and rare chance, and what the save does to the odds. */
+/* Row 0 of the list: the pack's full name, how many of its cards you own, the rare chance, and what the save
+ * does to the odds. */
 static void DrawHeader(int row)
 {
     struct PackViewWork *v = sView;
@@ -245,8 +268,10 @@ static void DrawHeader(int row)
     }
     tile += PV_HEADER_NAME_W * 2;
 
-    s = AppendNumber(line, pack->count);
-    s = AppendString(s, " cards  ");
+    s = AppendNumber(line, v->owned);
+    s = AppendString(s, "/");
+    s = AppendNumber(s, pack->count);
+    s = AppendString(s, " owned  ");
     if (pack->rare[0] == 0) {
         AppendString(s, "all commons");
     } else {
@@ -263,6 +288,23 @@ static void DrawHeader(int row)
     else
         AppendString(line, "Lucky pack: a rare for sure");
     DrawBgString((row * 4 + 3) * 32 + 1, PV_COLORS, tile, line);
+}
+
+/* NEW for a card you don't own, else how many copies you have: "x1" to "x99", "99+". */
+static void DrawCopies(int row, u32 copies)
+{
+    char text[4];
+    if (copies == 0) {
+        DrawBgString((row * 4 + 3) * 32 + 20, PV_NEW_COLORS, PV_TILE_ROW + row * 8 + 5, "NEW");
+        return;
+    }
+    if (copies > 99) {
+        AppendString(text, "99+");
+    } else {
+        text[0] = 'x';
+        AppendNumber(text + 1, copies);
+    }
+    DrawBgString((row * 4 + 3) * 32 + 20, PV_COLORS, PV_TILE_ROW + row * 8 + 5, text);
 }
 
 /* Draws the row for entry top + row: blank in VRAM now, the new map lines from the next frame. */
@@ -291,8 +333,7 @@ static void DrawRow(int row)
     GetPack_DrawCardRow(row, id);
     FormatOdds(odds, card->odds[v->mode]);
     DrawBgString((row * 4 + 3) * 32 + 25, PV_COLORS, PV_TILE_ROW + row * 8, odds);
-    if (!IsCardNumberOwned(card->number))
-        DrawBgString((row * 4 + 3) * 32 + 20, PV_NEW_COLORS, PV_TILE_ROW + row * 8 + 5, "NEW");
+    DrawCopies(row, OwnedCopies(card->number));
 }
 
 static void DrawRows(void)
@@ -546,6 +587,7 @@ void PackView_Open(void)
     v->top = 0;
     v->sel = 1;
     v->mode = OddsMode(packId);
+    v->owned = OwnedInPack(pack);
     v->moveDir = 0;
     v->dirty = 0;
     gPackOpenWork.cursorRow = 1;
@@ -675,8 +717,10 @@ void PackView_DrawPickName(void)
         return;
     CanvasInit(PV_PICK_CANVAS_W, PV_PICK_CANVAS_ROWS);
     DrawPickLine(1, PV_PICK_WHITE, sPackViewPacks[pack].name);
-    s = AppendNumber(line, sPackViewPacks[pack].count);
-    AppendString(s, " cards  -  SELECT: cards and odds");
+    s = AppendNumber(line, OwnedInPack(pack));
+    s = AppendString(s, "/");
+    s = AppendNumber(s, sPackViewPacks[pack].count);
+    AppendString(s, " owned  -  SELECT: cards and odds");
     DrawPickLine(13, PV_PICK_YELLOW, line);
     TextCanvasToTiles((u16 *)&gSceneWork.bgTiles[PV_PICK_TILE * 32], 0);
     for (i = 0; i < PV_PICK_CANVAS_W * PV_PICK_CANVAS_ROWS; i++)

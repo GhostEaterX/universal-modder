@@ -2,14 +2,15 @@
 -- in the player's zone 0, the CPU at 1 LP) so that the pick-a-pack screen comes up, applies the save setup
 -- from environment variables, and logs what is on screen whenever it changes:
 --   LAST_PACK / PITY   gSaveData.lastPackId / packPityCount: the "same pack again" and pity rules
---   OWN                card numbers, comma separated, to put in the trunk (they lose the NEW mark)
+--   OWN                card numbers, comma separated, to put in the trunk, one copy each (NEW becomes x1)
 --   PIN_RNG            an RNG state (hex) written when the pick starts its fade-out, so that two ROMs whose
 --                      frames drift apart generate from the same state
 -- Log lines:
 --   pick centre=ID band=0|1      the pick screen's centre pack, band=1 once its name is in the bottom band
 --   view pack=ID entries=N mode=M top=T row=R      the list (mode: 0 normal, 1 same pack, 2 pity)
 --   header 'LINE 3' 'LINE 4'     the header row's two text lines, as drawn
---   cursor e=E n=NUM odds='TEXT' new=0|1           the card under the cursor once its row is drawn
+--   cursor e=E n=NUM odds='TEXT' new=0|1 mark='M'  the card under the cursor once its row is drawn; mark is
+--                                                NEW or the copies you own (x1, x2, ...)
 --   detail n=NUM                 Card Detail
 --   generated pack=ID cards=a,b,c,d,e              the pack GeneratePackCards made (the pick)
 -- The text is read back from the screen: the BG0 map buffer and the 4bpp glyph tiles in VRAM, matched against
@@ -120,8 +121,9 @@ callbacks:add("frame", function()
             if not busy and top + rowIndex > 0 then
                 local id = emu:read16(VIEW + 0x4C + rowIndex * 2)
                 local line = rowIndex * 4 + 3
-                say("cursor", string.format("cursor e=%d n=%d odds='%s' new=%d", top + rowIndex,
-                    emu:read16(ID_TO_NUMBER + id * 2), text(line, 25, 5), text(line, 20, 3) == "NEW" and 1 or 0))
+                local mark = text(line, 20, 3)
+                say("cursor", string.format("cursor e=%d n=%d odds='%s' new=%d mark='%s'", top + rowIndex,
+                    emu:read16(ID_TO_NUMBER + id * 2), text(line, 25, 5), mark == "NEW" and 1 or 0, mark))
             end
         elseif state == 0x28 then   -- PV_DETAIL_INPUT
             say("detail", string.format("detail n=%d", emu:read16(ID_TO_NUMBER + emu:read16(DETAIL + 2) * 2)))
