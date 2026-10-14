@@ -14,6 +14,8 @@ them to the pick screen:
   - PackList_DrawCovers: the centre pack's name and the SELECT hint in the bottom band;
   - GetPack_DrawCardRow: in the viewer, a canvas clear of the row's tiles instead of all 64 KB (5 rows at
     once would take 15 frames); the opening scene keeps TextCanvasInit.
+  - GetPack_DrawCardRow, for a God (the original draws only the name): its Divine icon, stats and stars;
+  - CardDetail_DrawInfo: outside a duel, the description is followed by the packs that hold the card.
 Idempotent. Stdlib only.
 """
 import argparse
@@ -63,6 +65,15 @@ EDITS = [
     ("src/card_canvas.c",
      "    TextCanvasInit(0x18, 2);\n",
      f"    PackView_CanvasInit(0x18, 2);     /* {MARK}: TextCanvasInit outside the viewer */\n", "replace"),
+    ("src/card_canvas.c",
+     "    case CARD_TYPE_DIVINE:\n        break;\n    default: {\n        const u32 *statsPtr;\n",
+     f"        PackView_DrawGodStats(row, id);   /* {MARK}: a God's icon, stats and stars */\n",
+     "before:        break;\n    default: {"),
+    ("src/title_menu.c",
+     "        CardDetail_DrawTextBox(4, BOX_XY(13, 4), BOX_XY(18, 24), 0x248, TEXT_COLORS(7, 9), 10, TEXT_XY(4, 2),\n"
+     "                               (const u8 *)0x082461A0 + cardId * CARD_DESCRIPTION_SIZE, 1, 0);\n",
+     f"        PackView_DrawDescription(cardId);     /* {MARK}: the description, then the packs that hold it */\n",
+     "replace"),
     ("src/booster_get_pack.c",
      "        sel++;\n        sel %= *cnt;\n    }\n",
      f"    PackView_DrawPickName();     /* {MARK}: the centre pack's name */\n",

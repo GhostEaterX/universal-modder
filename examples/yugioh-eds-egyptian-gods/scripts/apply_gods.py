@@ -12,8 +12,9 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
   - tables/rodata2/card_copy_limits.json    ban list: 0 copies -> GOD_COPY_LIMIT
   - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God
   - cards/descriptions.json                 with --text 2|3 (the effects builds): the Gods' effect text in
-                                            place of their flavour text, saying 2 or 3 Tributes. Each text
-                                            is a fixed 480-byte record, so nothing moves
+                                            place of their flavour text, saying 2 or 3 Tributes; with 3, also
+                                            the summon rules that patch_god_rules.py builds. Each text is a
+                                            fixed 480-byte record, so nothing moves
 
 The C side (Divine counts as a monster type, Obelisk stops being a Ritual) is patches/eds-decomp.diff.
 Stdlib only; Python 3.8+.
@@ -45,6 +46,12 @@ EFFECT_TEXT = {  # what patch_god_effects.py implements
             "reduced to 0 as a result, destroy it.",
     RA: "When this card is Normal Summoned, you can pay Life Points so that you only have 100 left: its ATK "
         "and DEF become the amount paid. You can pay 1000 Life Points to destroy 1 monster on the field.",
+}
+# The three-Tribute effects build also has the TCG summon rules (patch_god_rules.py).
+RULES_TEXT_3T = {
+    OBELISK: (" If this card is Special Summoned, it is sent to the Graveyard during the End Phase.", ""),
+    SLIFER: (" If this card is Special Summoned, it is sent to the Graveyard during the End Phase.", ""),
+    RA: ("", "Cannot be Special Summoned. "),      # (after the effect text, before it)
 }
 TEXT_RECORD = 0x1E0
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
@@ -192,7 +199,8 @@ def main():
         if json.dumps(data, ensure_ascii=False, indent=1) + "\n" != raw:
             sys.exit(f"{path}: unexpected formatting, refusing to rewrite it")
         for number, (card_id, name, _) in GODS.items():
-            text = SUMMON_TEXT.format(n=args.text) + EFFECT_TEXT[number]
+            after, before = RULES_TEXT_3T[number] if args.text == 3 else ("", "")
+            text = SUMMON_TEXT.format(n=args.text) + before + EFFECT_TEXT[number] + after
             if len(text.encode("ascii")) >= TEXT_RECORD:
                 sys.exit(f"{name}: the text is longer than its {TEXT_RECORD}-byte record")
             if data[card_id] != text:

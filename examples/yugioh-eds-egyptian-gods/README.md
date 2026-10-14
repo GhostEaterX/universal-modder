@@ -19,11 +19,18 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - **The Winged Dragon of Ra:** when you Normal Summon it, you may pay LP until you have 100; its ATK and
     DEF become the amount paid. You can also pay 1000 LP to destroy 1 monster on the field.
   - **All three:** their Normal Summon can't be answered (no Trap Hole on a God), and they can't be Set.
+- **TCG summon rules (`gods-3t-fx.bps`):** a Special Summoned Obelisk or Slifer (Monster Reborn, Call of the
+  Haunted...) is sent to the Graveyard in the End Phase, and Ra can't be Special Summoned, for you and for the
+  CPU. The card text says so. Deck Edit sorts the Gods among the monsters and lists Obelisk as an Effect
+  Monster.
 - **Pack viewer (`gods-3t-fx.bps`):** on the pick-a-pack screen after a duel, the bottom band names the pack
-  in the centre. SELECT lists every card in it, with each card's chance of being in the pack you'd get, and
-  marks the cards you don't own yet with NEW. The chances follow your save: picking the same pack as last
-  time makes rare cards less likely, and after a run of all-common packs the game guarantees a rare one. A
-  opens a card's Card Detail, and B goes back to the pick screen.
+  in the centre and how many of its cards you own ("23/40 owned"). SELECT lists every card in it, with each
+  card's chance of being in the pack you'd get, and either NEW (you don't own it) or how many copies you
+  have. The chances follow your save: picking the same pack as last time makes rare cards less likely, and
+  after a run of all-common packs the game guarantees a rare one. A opens a card's Card Detail, and B goes
+  back to the pick screen.
+- **Found in (`gods-3t-fx.bps`):** every Card Detail outside a duel (Trunk, Deck Edit, the pack list) ends with
+  the packs that hold the card and its chance in each, e.g. "Found in: Vol.7 12.1% (locked)".
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -110,8 +117,9 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36`, with the pack viewer (the earlier one
-  without it, which the user ran in Delta, was `471f4347758993363e2bbaac30167f1635575c43`).
+- `gods-3t-fx.gba`: SHA-1 `27007baa47952ebfe051c3f1eaa399eef011ef99`, with the summon rules, the pack
+  viewer and Found in. Earlier versions: `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36` (the first pack viewer)
+  and `471f4347758993363e2bbaac30167f1635575c43` (effects only, the one the user ran in Delta).
 
 ### How the three-Tribute build works
 `scripts/patch_three_tributes.py` runs after `patch_source.py`. The engine already had a third Tribute slot
@@ -173,9 +181,26 @@ functions automatically. `check_effect_table.py` then stops the build unless:
 | CPU | uses Obelisk when it clears more ATK than it Tributes, and Ra's destroy against a 2000+ ATK monster while it keeps more than 2000 LP; pays for Ra when that makes Ra stronger than 4000; summons Slifer only with 4+ cards in hand |
 | Card text | the Gods' text in Card View describes the effects (data, in place) |
 
+### How the summon rules work (gods-3t-fx)
+`scripts/patch_god_rules.py` runs after the effects patch, in the `gods-3t-fx` build only. It copies
+`src/god_rules.c` into the decomp as a new unit and makes 7 anchored edits in 5 files.
+
+| Where | What the edits do |
+|---|---|
+| `CanReviveGraveyardCard` | Ra can't come back from the Graveyard. This one check builds the target lists of Monster Reborn, Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin, for you and for the CPU, so Ra drops out of all of them |
+| Time Machine | the one revival without that check: not for Ra |
+| `DuelPhase_End` | each player's face-up Special Summoned Obelisk or Slifer goes to the Graveyard |
+| `AiPickDiscard` | the CPU doesn't discard a God to revive it |
+| Deck Edit's filter and sort | the Gods sort among the monsters (by ATK, DEF, level...), and Obelisk is an Effect Monster, not a Ritual one (its frame stays blue) |
+
+The other Special Summons (from the deck, the hand or the Fusion Deck) already exclude a level-10,
+4000-ATK Divine monster, or name their cards. The engine marks every Special Summon on the card
+(`specialSummoned`), which is what the End Phase reads. `apply_gods.py --text 3` adds the two rules to the
+Gods' card text.
+
 ### How the pack viewer works
-`scripts/patch_pack_viewer.py` runs last, in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
-the decomp as a new unit, writes its odds table from your ROM's pack lists, and makes 6 anchored edits in 4
+`scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
+the decomp as a new unit, writes its odds table from your ROM's pack lists, and makes 8 anchored edits in 5
 files. The plan, with the research on how the game makes a pack, is `PLAN-pack-viewer.md`.
 
 ```
@@ -214,10 +239,15 @@ list.
 | `GetPack_SelectAndGenerate` | the viewer runs on new sub-states (0x20 and up), before the pack is made |
 | `PackList_Init` | back from the viewer, the same pack is in the centre |
 | `PackList_DrawCovers` | the band text, drawn into the pick screen's 4bpp text layer |
-| `GetPack_DrawCardRow` | in the viewer, a canvas clear of the row's 3 KB instead of 64 KB (3 frames per row) |
+| `GetPack_DrawCardRow` | in the viewer, a canvas clear of the row's 3 KB instead of 64 KB (3 frames per row); for a God, its Divine icon, stats and stars, which the original row leaves out |
+| `CardDetail_DrawInfo` | outside a duel, the description is followed by "Found in": the three packs with the best chance (normal roll), "(locked)" for a pack you can't pick yet, and how many more |
 
 The list is the opening scene: its video setup, its row drawer and its Card Detail steps. To avoid tearing,
 a scroll moves the four rows that stay in the VBlank callback and draws only the new one, while it is blank.
+
+Found in is a yellow paragraph under the description. When a long description leaves no room for it, it
+joins the description, and the game's own text fitting (a tighter line gap, then a smaller font) makes both
+fit. It is left out inside duels (the Campaign's or a Link Battle's duel step).
 
 ## Verification
 These checks run in eds-decomp's headless mGBA 0.10.5 harness: `tests/run_oracles.py`, with the `.lua` setups
@@ -293,13 +323,38 @@ viewer's text costs a lag frame, and the game's RNG ticks once per frame.
 | Same pack again: the header says so, rare card 23.8%, Dark Magician 3.0% | pass | fails |
 | Pity roll: a rare for sure, Dark Magician 50.0% | pass | fails |
 | Same pack with pity 6 is still "same pack"; with 11 it is the pity roll | pass | fails |
-| NEW on a card you don't own; gone once it is in your trunk | pass | fails |
+| The header's owned count equals the rows without NEW, over the whole list | pass | fails |
+| NEW on a card you don't own; x1 once it is in your trunk | pass | fails |
+| A God's row (Obelisk, The Final Duelist) shows its stats, 4000/4000 | pass | fails |
+| Card Detail from the list has the Found in paragraph | pass | fails |
 | Card Detail from the list, RIGHT to the next card, B back to it in the list | pass | fails |
 | B goes back with the same pack in the centre, and A picks it: the same 5 cards as the original game | pass | pass |
 | Regression: a pick without SELECT gives the same 5 cards | pass | pass |
 
-Not yet checked for the viewer: a real device, and packs other than Vol.1-3 in the emulator (the test save
-unlocks only those; the other 20 lists come from the same table and code).
+Not yet checked for the viewer: a real device, and most packs other than Vol.1-3 in the emulator (the test
+save unlocks only those; one check puts The Final Duelist on the pick screen, and the other lists come from
+the same table and code).
+
+The summon rules and the Deck Edit changes have their own suite, `--god-rules` (same control). Monster Reborn
+is played from the hand onto a Graveyard staged in RAM; the Deck Edit checks read the Trunk list as shown,
+after the List Filter; Found in is read off the text canvas, as yellow pixels.
+
+| Check (`gods-3t-fx.gba`) | Rules build | Build without them |
+|---|---|---|
+| Monster Reborn still revives Blue-Eyes | pass | pass |
+| Monster Reborn can't revive Ra (it can't even be activated with only Ra in the Graveyards) | pass | fails (Ra comes back) |
+| The CPU's Monster Reborn, with Ra and Blue-Eyes in its Graveyard, brings back Blue-Eyes | pass | fails (it picks Ra) |
+| A revived Obelisk, and a revived Slifer, go to the Graveyard in the End Phase | pass | fails (they stay) |
+| A revived Blue-Eyes stays; a God that wasn't Special Summoned stays | pass | pass |
+| The card text says "Cannot be Special Summoned." and "...sent to the Graveyard during the End Phase." | pass | fails |
+| Deck Edit, ATK sort: Obelisk, Slifer, Ra, Blue-Eyes, Dark Magician, 7 Colored Fish, Monster Reborn | pass | fails (the Gods last) |
+| Deck Edit, Effect Monsters: Obelisk, Slifer, Ra | pass | fails (no Obelisk) |
+| Card Detail from Deck Edit has Found in ("Found in: Vol.7 12.1% (locked)" for 7 Colored Fish) | pass | fails |
+| Card Detail inside a duel has no Found in | pass | pass |
+
+Not yet checked for the rules: a real device; Call of the Haunted, Premature Burial, The Shallow Grave and
+Spear Cretin on Ra (they read the same list as Monster Reborn); Time Machine on Ra (its own check, reviewed
+in the code only).
 
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
@@ -315,21 +370,23 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
-- **Pack viewer only in `gods-3t-fx`,** and only on the pick-a-pack screen: the fixed packs some event duels
-  give skip that screen.
+- **The summon rules, the pack viewer and Found in are only in `gods-3t-fx`.** The pack list is only on the
+  pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only those pick-screen
+  packs, so a card that comes only from an event, a trade or a password says it isn't in them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
   pity counter changes after each pack.
 - **A little lag:** drawing the pack name costs about 1 frame when the pick screen opens and when the
   covers stop sliding.
-- **Effects not built:** a Special Summoned Obelisk or Slifer doesn't go to the graveyard in the End Phase,
-  and Ra can still be Special Summoned (both TCG rules).
+- **The TCG summon rules are not in `gods-fx`:** there a Special Summoned Obelisk or Slifer stays, and Ra can
+  be Special Summoned.
 - **Obelisk's immunity uses the game's shared target check.** So a Tribute picked through it, Cannon
   Soldier's or Catapult Turtle's, can't pick Obelisk either.
 - **Slifer has 0 ATK with an empty hand,** as in the TCG. The CPU only summons it with 4 or more cards in hand.
 - **The CPU's effect choices are simple rules** (see "How the effects build works"), not tuned play.
 - **Link Battle:** both GBAs need the same patch.
-- **X000 in Deck Edit:** the deck list shows the Gods' ATK and DEF as `X000`, the game's own Divine display.
-  The duel's info bar shows the real values (4000, or Slifer's and Ra's current ones in the effects builds).
+- **The Gods' printed stats:** Deck Edit and Card Detail print Obelisk 4000, Slifer `X000` and Ra `????`,
+  the game's own Divine display. In the effects builds that is what they mean (1000 × your hand, the LP paid);
+  in `gods.bps` and `gods-3t.bps` all three are 4000. The duel's info bar shows the current values.
 - **A little lag:** the relocated code costs about 2 frames during the opening deal.
 
 ## Credits

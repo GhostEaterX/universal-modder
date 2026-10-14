@@ -187,6 +187,21 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   map plus VRAM glyph tiles, against the game's 8x8 bold font). With the RNG pinned at the pick, the viewer
   build and the build without it generate the same 5 cards, even after a trip through the viewer.
 
+### Also in the fourth build: the TCG summon rules and quality of life
+- **Rules:** a Special Summoned Obelisk or Slifer goes to the Graveyard in the End Phase, and Ra can't be
+  Special Summoned (`patch_god_rules.py`, a new unit `god_rules.c`).
+  - Every revival but Time Machine takes its candidates from `CanReviveGraveyardCard`. One edit there covers
+    Monster Reborn, Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin, for the player
+    and the CPU.
+  - The End Phase hook reads the card word's `specialSummoned` bit, on both sides.
+- **Quality of life:**
+  - the pick screen and the pack list show "23/40 owned", and each row NEW or the copies owned;
+  - every Card Detail outside a duel ends with the packs that hold the card;
+  - Deck Edit sorts the Gods as monsters;
+  - the pack rows show a God's stats.
+- **Checks:** 13 rule and Deck Edit oracles plus 4 more viewer checks, each failing on the build without
+  them (or passing on both, for the regressions).
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -282,6 +297,18 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
       every later key press to a different RNG state.
     - **Fix:** to compare two builds' packs, pin `gMain.rngState` (`0x03000040`) when the pick's fade-out
       starts.
+23. **The Gods' "X000" is not a blanket Divine display.** Deck Edit and Card Detail print Obelisk 4000,
+    Slifer `X000` and Ra `????`, which is exactly what they mean with the effects (1000 × the hand, the LP
+    paid). The real gaps were elsewhere: Deck Edit's sorts and filters treated Divine as "not a monster", and
+    the pack-opening row drew nothing for Divine.
+24. **Deck Edit's Monsters filter can't be selected.** `LIST_FILTER_MONSTERS` isn't in the cursor tables.
+    Grouping a type with the monsters shows only in the ATK/DEF/level sorts of the whole list.
+25. **Card Detail's description fits itself.** `CardDetail_RenderText` retries with a smaller line gap, then
+    font 8, until the text ends above y 192, and each pass clears the whole 64 KB canvas. To add lines, draw
+    them below whatever pass fitted, or join them to the description and let the retries shrink both.
+26. **Telling a duel from the rest:** `gDuelScreen.active` is cleared before a duel's Card Detail opens, and
+    `gDuelCtrl.phase` is never reset. Test `gMain.callback` and its step: `CB_Campaign` step 4, or
+    `CB_LinkBattle` step 3.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the
@@ -289,11 +316,12 @@ patch.
 
 ## Cost and time
 One session: recon, then toolchain, data, code, hooks, oracles, a showcase clip and docs, in a few hours of
-wall-clock. The three-Tribute build, the effects builds and the pack viewer took one session each. A build takes about 1
+wall-clock. The three-Tribute build, the effects builds, the pack viewer and the summon rules with the
+quality-of-life changes took one session each. A build takes about 1
 minute; an oracle suite with its control takes a few minutes.
 
 ## Open questions
-- Not built: the TCG rule that a Special Summoned Obelisk or Slifer goes to the graveyard in the End Phase,
-  and "Ra can't be Special Summoned".
+- The TCG summon rules (a Special Summoned Obelisk or Slifer leaves in the End Phase, Ra can't be Special
+  Summoned) are only in the three-Tribute effects build; `gods-fx` doesn't have them.
 - The hook builder is generic enough for any non-relocatable GBA decomp. It could become a technique note
   or a `um` command.

@@ -4,7 +4,7 @@
 /*
  * Pack viewer (universal-modder, examples/yugioh-eds-egyptian-gods): on the pick-a-pack screen after a duel,
  * the bottom band names the centre pack, and SELECT lists every card in it, with the chance that the card is in
- * the pack you'd get. patch_pack_viewer.py copies this header and src/pack_viewer.c into an eds-decomp tree,
+ * the pack you'd get. Outside duels, Card Detail also says which packs hold the card. patch_pack_viewer.py copies this header and src/pack_viewer.c into an eds-decomp tree,
  * generates include/pack_viewer_data.h from the tree's booster_packs.json (scripts/gen_pack_odds.py) and makes
  * the edits that call the hooks below.
  */
@@ -49,5 +49,10 @@ void PackView_DrawPickName(void);
 /* card_canvas.c GetPack_DrawCardRow: TextCanvasInit, except in the viewer, where only the row's tiles of the
  * canvas are cleared (TextCanvasInit clears all 64 KB, about 3 frames, and the list redraws 5 rows at once). */
 void PackView_CanvasInit(u32 widthTiles, u32 heightTiles);
+/* card_canvas.c GetPack_DrawCardRow, a Divine card (the original draws only its name): the Divine icon, the
+ * stats as Card Detail and Deck Edit show them, and 10 stars. */
+void PackView_DrawGodStats(int row, u16 id);
+/* title_menu.c CardDetail_DrawInfo: the card's description and, outside a duel, the packs that hold it. */
+void PackView_DrawDescription(u16 cardId);
 
 #endif /* GUARD_PACK_VIEWER_H */

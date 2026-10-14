@@ -352,5 +352,104 @@
       "on a real device (Delta)",
       "packs other than Vol.1-3 in the emulator (the save in the harness unlocks only those; the other 20 lists come from the same table and code)"
     ]
+  },
+  "round3_rules_and_quality_of_life": {
+    "decisions": "the Gods' TCG summon rules (Special Summoned Obelisk/Slifer to the Graveyard in the End Phase; Ra can't be Special Summoned); owned counts in the pack list; Found in on Card Detail outside duels; the Gods in Deck Edit's sorts and filters and their stats in the pack rows (the game's 4000 / X000 / ???? print stays: it matches the effects); only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "27007baa47952ebfe051c3f1eaa399eef011ef99",
+      "patch_bytes": 66260,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer",
+        "god_rules"
+      ],
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt from fresh work dirs match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --control gods-3t.gba",
+    "suite_result": "62/62: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit checks; every control comparison as expected. One viewer check first failed on its own regex (it expected the Card Detail log lines in the other order); fixed and re-run on the same ROM: pass, control fails.",
+    "viewer_checks_added": [
+      "viewer: owned count = the rows without NEW (fails on the control)",
+      "viewer: x1 instead of NEW once you own it (fails on the control)",
+      "viewer: a God's row shows its stats, 4000/4000 for Obelisk in The Final Duelist (fails on the control)",
+      "viewer: Card Detail says where else to find it (fails on the control)"
+    ],
+    "oracles": [
+      {
+        "check": "rules: Monster Reborn still revives Blue-Eyes",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: Monster Reborn can't revive Ra",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: the CPU's Monster Reborn skips Ra",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Obelisk leaves in the End Phase",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Slifer leaves in the End Phase",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Blue-Eyes stays",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: a God summoned normally stays",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: the card text says so",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: the card text says so (End Phase)",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: ATK sort puts the Gods first",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: Effect Monsters lists Obelisk",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Card Detail: Found in, from Deck Edit",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Card Detail: no Found in inside a duel",
+        "rules_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: 8/40 owned on the pick band; x1/x3 marks; Obelisk's row in The Final Duelist; Obelisk's Card Detail with the new text and Found in; Deck Edit sorted by ATK with the Gods first; Found in for 7 Colored Fish in Deck Edit; a revived Obelisk zoomed and sent away in the End Phase"
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "Time Machine on Ra (code-reviewed only: Time Machine is the one revival without CanReviveGraveyardCard)",
+      "Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin on Ra (they use the same CanReviveGraveyardCard list as Monster Reborn, which is tested)"
+    ]
   }
 }

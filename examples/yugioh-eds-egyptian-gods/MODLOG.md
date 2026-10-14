@@ -268,3 +268,47 @@
 - **Oracles (`--pack-viewer`, `tests/pack_viewer.lua`):** 13 checks. The logger reads the odds, NEW and header
   text back from the BG0 map and the VRAM glyph tiles, against the game's 8x8 bold font. Every viewer check
   fails on the build without the viewer, and the two pick checks pass on both.
+
+## 2026-10-14: summon rules and quality of life (in `gods-3t-fx`)
+- **User's decisions:** the recommendations:
+  - the Gods' two missing TCG rules;
+  - owned counts in the pack list;
+  - "Found in" on Card Detail;
+  - the Gods' stats in Deck Edit.
+- **Correction while building:**
+  - The "X000" in Deck Edit isn't a blanket Divine display. The game prints Obelisk 4000, Slifer `X000` and Ra `????`, in both Deck Edit and Card Detail.
+  - In the effects build that is what the cards mean (Slifer = 1000 × the hand, Ra = the LP paid), so it stays.
+  - What was really off: Deck Edit sorted the Gods after the spells and filed Obelisk under Ritual, and the pack rows drew nothing for a God.
+- **Code:**
+  - `src/god_rules.c`, a new unit;
+  - `scripts/patch_god_rules.py`, with 7 edits in 5 files:
+    - `CanReviveGraveyardCard`;
+    - Time Machine;
+    - `DuelPhase_End`;
+    - `AiPickDiscard`;
+    - three in Deck Edit's filter;
+  - the pack viewer gets 2 more edits: the God row in `GetPack_DrawCardRow`, and Found in in `CardDetail_DrawInfo`;
+  - `apply_gods.py --text 3` adds the rules to the card text.
+  
+  The new units are linked only into `gods-3t-fx`, so the other three ROMs stay byte for byte as published.
+- **Where Special Summons come from:** every revival but Time Machine lists its candidates through
+  `CanReviveGraveyardCard`. That one list is what Prepare counts, what the player's list shows and what the
+  CPU picks from (it picks the best ATK + DEF, so without the rule it always took Ra). Summons from the deck,
+  the hand or the Fusion Deck already exclude a level-10, 4000-ATK Divine monster, or name their cards.
+- **End Phase:** `DuelPhase_End`'s low-level step, for both players: a God Special Summoned on the
+  opponent's turn still leaves at the next End Phase. The card word's `specialSummoned` bit is set by every
+  Special Summon builder, and it is cleared when the card goes back to the hand or the deck.
+- **Gotcha, the Monsters filter:** Deck Edit's `LIST_FILTER_MONSTERS` can't be selected (it isn't in the cursor
+  tables). The visible effects of treating the Gods as monsters are the ATK/DEF/level sorts of the whole
+  Trunk and the Effect/Ritual filters.
+- **Gotcha, Card Detail text:**
+  - `CardDetail_RenderText` retries with a tighter line gap, then font 8, until the text ends above y 192. Each pass clears the whole 64 KB canvas.
+  - Found in is drawn as its own paragraph (yellow, font 8) below whatever pass fitted.
+  - When there's no room (the Gods' long effect texts), it joins the description inline, and the retries shrink both.
+  - The tests count yellow pixels on the canvas.
+- **Gotcha, duel or not:** `gDuelScreen.active` and `gDuelCtrl.phase` don't tell you whether you're in a duel. They are cleared before Card Detail opens, or never reset. `gMain.callback` plus the duel step (`CB_Campaign` step 4, `CB_LinkBattle` step 3) does.
+- **Harness:**
+  - `effects.lua` gained graveyard staging (`P_GRAVE`, `C_GRAVE`);
+  - Monster Reborn is Activate (two RIGHTs), OK, then LEFT to the list's "designate" icon;
+  - `deck_edit.lua` puts cards in the Trunk before Deck Edit builds its lists, and reads the shown list (`gDeckEdit.lists[1].trunk`);
+  - `pack_viewer.lua` can put any pack in the pick screen's centre slot (`PICK_PACK`).

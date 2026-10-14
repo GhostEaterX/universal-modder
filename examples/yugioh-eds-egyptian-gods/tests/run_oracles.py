@@ -4,7 +4,8 @@
     run_oracles.py <eds-decomp checkout> <gods.gba>    [--control original.gba]        # 2-Tribute build
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
-    run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer [--control gods-3t.gba]
+    run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
+                   [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -20,7 +21,9 @@ checks also run on a control ROM, where each check says what must happen there:
     take one RIGHT less.
   - with --pack-viewer, the same control for the pack viewer suite (pack_viewer.lua): every viewer check
     must fail there, and the pick must give the same pack as there. The expected odds come from the
-    checkout's own booster_packs.json, through scripts/gen_pack_odds.py.
+    checkout's own booster_packs.json, through scripts/gen_pack_odds.py;
+  - with --god-rules, the same control for the Gods' summon rules and Deck Edit (effects.lua, deck_edit.lua):
+    every rule check must fail there, and the regressions must pass.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -191,6 +194,11 @@ def pv_suite():
               r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=1"),
         check("viewer: x1 instead of NEW once you own it", PV, "duel_turn2", 2200, sel, {"OWN": "34"},
               r"cursor e=1 n=34 odds='[ .0-9]{4}%' new=0 mark='x1'"),
+        check("viewer: a God's row shows its stats", PV, "duel_turn2", 2200, sel, {"PICK_PACK": "505"},
+              r"cursor e=1 n=1910 [^\n]*stats='4000/4000'"),
+        check("viewer: Card Detail says where else to find it", PV, "duel_turn2", 2500,
+              sel + "; 2200 DOWN; 2220 DOWN; 2300 A", {},
+              r"detail n=335\n[\s\S]*detail id=147 found=[1-9]|detail id=147 found=[1-9]\d*\n[^\n]*detail n=335"),
         check("viewer: Card Detail, RIGHT, back to the list", PV, "duel_turn2", 2600,
               sel + "; 2200 A; 2350 RIGHT; 2450 B", {},
               r"detail n=34[\s\S]*detail n=37[\s\S]*view pack=1 entries=41 mode=0 top=0 row=2"),
@@ -199,6 +207,52 @@ def pv_suite():
               control="passes"),
         check("regression: a pick without SELECT", PV, "duel_turn2", 2400, WIN_KEYS + "; 2100 RIGHT; 2200 A",
               PIN, VANILLA_PACK, control="passes"),
+    ]
+
+
+DE = "deck_edit.lua"
+SIX = lambda card: ",".join([card] * 6)
+REBORN = "482"      # Monster Reborn's card ID
+# duel_main1, a hand of Monster Reborn -> Activate, OK, the list's "designate" icon, the first card, the chain
+# resolves, Attack Position
+REBORN_KEYS = ("15 A; 45 RIGHT; 55 RIGHT; 70 A; 250 A; 400 A; 480 LEFT; 500 A; 650 A; 800 A; 1100 A; 1250 A")
+REBORN_END_KEYS = REBORN_KEYS + "; 1400 B; 1440 A"       # then end the turn
+# main_menu -> Deck Edit (the Trunk), the command bar, three RIGHTs to List Filter
+FILTER_KEYS = "0 DOWN; 15 DOWN; 30 A; 200 A; 260 RIGHT; 300 RIGHT; 340 RIGHT; 380 A"
+TRUNK = {"TRUNK": "1,82,817,818,819,482,150"}   # 7 Colored Fish, Blue-Eyes, the Gods, Monster Reborn, Dark Magician
+RULES_TEXT = (b"Cannot be Special Summoned.", b"If this card is Special Summoned, it is sent to the Graveyard "
+              b"during the End Phase.")
+
+
+def rules_suite():
+    gone = lambda god: (rf"P {god},0,0,0,0 [^\n]*\n[\s\S]*"
+                        r"P 0,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 5 5 grave 2 0")
+    return [
+        check("rules: Monster Reborn still revives Blue-Eyes", E, "duel_main1", 1500, REBORN_KEYS,
+              {"P_HAND": SIX(REBORN), "P_GRAVE": "82"}, r"P 82,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 5 5 grave 1 0",
+              control="passes"),
+        check("rules: Monster Reborn can't revive Ra", E, "duel_main1", 1500, REBORN_KEYS,
+              {"P_HAND": SIX(REBORN), "P_GRAVE": "819"}, r"P 819", must=False),
+        check("rules: the CPU's Monster Reborn skips Ra", E, "duel_main1", 2500, END_TURN_KEYS,
+              {"C_HAND": "482,482,482,482,482", "C_GRAVE": "819,82"}, r"C 82,0,0,0,0"),
+        check("rules: a revived Obelisk leaves in the End Phase", E, "duel_main1", 2000, REBORN_END_KEYS,
+              {"P_HAND": SIX(REBORN), "P_GRAVE": "817"}, gone(817)),
+        check("rules: a revived Slifer leaves in the End Phase", E, "duel_main1", 2000, REBORN_END_KEYS,
+              {"P_HAND": SIX(REBORN), "P_GRAVE": "818"}, gone(818)),
+        check("rules: a revived Blue-Eyes stays", E, "duel_main1", 2000, REBORN_END_KEYS,
+              {"P_HAND": SIX(REBORN), "P_GRAVE": "82"}, r"P 82,0,0,0,0 C [^\n]*hand 5 6", control="passes"),
+        check("rules: a God summoned normally stays", E, "duel_main1", 1500, END_TURN_KEYS,
+              {"P_ZONES": "0:817", "C_HAND": "1,1,1,1,1"}, r"P 817,0,0,0,0 C [^\n]*hand \d+ 6", control="passes"),
+        check("rules: the card text says so", None, None, 0, None, {}, RULES_TEXT[0]),
+        check("rules: the card text says so (End Phase)", None, None, 0, None, {}, RULES_TEXT[1]),
+        check("Deck Edit: ATK sort puts the Gods first", DE, "main_menu", 700, FILTER_KEYS + "; 480 A; 520 DOWN; 560 A",
+              TRUNK, r"trunk n=7 ids=817,818,819,82,150,1,482"),
+        check("Deck Edit: Effect Monsters lists Obelisk", DE, "main_menu", 700, FILTER_KEYS + "; 440 DOWN; 460 DOWN; "
+              "480 A; 560 A", TRUNK, r"trunk n=3 ids=817,818,819"),
+        check("Card Detail: Found in, from Deck Edit", DE, "main_menu", 500, "0 DOWN; 15 DOWN; 30 A; 200 A; 240 A",
+              {"TRUNK": "1,82"}, r"detail id=1 found=[1-9]"),
+        check("Card Detail: no Found in inside a duel", E, "duel_main1", 400, "15 A; 60 A", {"P_HAND": SIX("82")},
+              r"detail id=82 found=0", control="passes"),
     ]
 
 
@@ -312,6 +366,7 @@ def main():
                     help="the original ROM (2-Tribute suite), the 2-Tribute build (3-Tribute suite), or the "
                          "build without effects (effects suites)")
     ap.add_argument("--pack-viewer", action="store_true", help="the ROM has the pack viewer (gods-3t-fx)")
+    ap.add_argument("--god-rules", action="store_true", help="the ROM has the Gods' summon rules (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -322,6 +377,9 @@ def main():
     if args.pack_viewer:
         checks = checks + pv_suite()
         tag += "pv"
+    if args.god_rules:
+        checks = checks + rules_suite()
+        tag += "gr"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

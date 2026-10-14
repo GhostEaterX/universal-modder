@@ -8,6 +8,10 @@
  * A opens Card Detail (LEFT/RIGHT go through the list), and B goes back to the pick screen with the same pack
  * in the centre.
  *
+ * Elsewhere: every Card Detail outside a duel ends with the packs that hold the card and its chance in each
+ * ("Found in: Vol.3 1.7%, ..."), and the pack rows show a God's stats, which the original row drawer leaves
+ * out.
+ *
  * The list runs inside GetPack_SelectAndGenerate, on sub-states PACKVIEW_STATE_FIRST and up. It uses the
  * pack-opening scene's video setup (GetPack_InitScene) and row drawer (GetPack_DrawCardRow), and keeps its
  * state in gPackOpenWork, which is cleared before a pack is generated. The odds table, pack_viewer_data.h, is
@@ -25,6 +29,8 @@
 #include "sound.h"
 #include "sprite.h"
 #include "text.h"
+#include "bg.h"
+#include "campaign.h"
 #include "pack_viewer.h"
 #include "pack_viewer_data.h"   /* generated: sPackViewCards, sPackViewPacks */
 
@@ -69,6 +75,9 @@ enum {
     PV_DETAIL_CLOSE,
     PV_DETAIL_SWITCH,
 };
+
+#define GOD_NUMBER_SLIFER_PV    1911    /* CARD_SLIFER_THE_SKY_DRAGON */
+#define GOD_NUMBER_RA_PV        1912    /* CARD_THE_WINGED_DRAGON_OF_RA */
 
 #define PV_ROWS         5           /* rows of 32 pixels, as in the opening scene */
 #define PV_TILE_ROW     0x220       /* 4bpp tiles of char block 1 the opening scene leaves free: */
@@ -725,4 +734,160 @@ void PackView_DrawPickName(void)
     TextCanvasToTiles((u16 *)&gSceneWork.bgTiles[PV_PICK_TILE * 32], 0);
     for (i = 0; i < PV_PICK_CANVAS_W * PV_PICK_CANVAS_ROWS; i++)
         map[(PV_PICK_ROW + i / PV_PICK_CANVAS_W) * 32 + i % PV_PICK_CANVAS_W] = (PV_PICK_PAL << 12) | (PV_PICK_TILE + i);
+}
+
+/* ---- God rows --------------------------------------------------------------------------------------- */
+
+#define PV_DIVINE_ICON      9           /* gAttributeIconImages: 0 none, 1-6 Light..Wind, 7 Trap, 8 Magic, 9 Divine */
+#define PV_GOD_LEVEL        10
+
+void PackView_DrawGodStats(int row, u16 id)
+{
+    u32 line = (u16)(row * 4 + 2) << 5;
+    const char *stat;
+    int i;
+    /* the stats Card Detail and Deck Edit print: Slifer's ATK is 1000 x the hand, Ra's the LP paid */
+    switch (gCardIdToNumber[id & CARD_ID_MASK]) {
+    case GOD_NUMBER_SLIFER_PV:
+        stat = "X000";
+        break;
+    case GOD_NUMBER_RA_PV:
+        stat = "????";
+        break;
+    default:
+        stat = "4000";
+        break;
+    }
+    LoadBgImage4bpp(line + 3, (row + 5) * 16, row * 4 + 0x300, gAttributeIconImages[PV_DIVINE_ICON]);
+    LoadBgImage4bpp(line + 8, 0xF0, 0x340, (const u16 *)0x0863CA1C);     /* the ATK/DEF label of the rows */
+    DrawBgString(line + 9, PV_COLORS, row * 8 + 0x1A0, (char *)stat);
+    DrawBgString(line + 32 + 9, PV_COLORS, row * 8 + 0x1C8, (char *)stat);
+    for (i = 0; i < PV_GOD_LEVEL; i++)
+        SetBgMapEntry(0, i + 0xE + line, 2);
+}
+
+/* ---- Card Detail: where to find the card ------------------------------------------------------------- */
+
+/* The description box of CardDetail_DrawInfo: 18 x 24 tiles from tile 0x248 at (13, 4) of BG3's map. */
+#define PV_DESC_SIZE        ((24 << 8) | 18)
+#define PV_DESC_MAP_X       13
+#define PV_DESC_MAP_Y       4
+#define PV_DESC_ROWS        24
+#define PV_DESC_TILE        0x248
+#define PV_DESC_COLORS      ((9 << 8) | 7)
+#define PV_DESC_POS         ((2 << 16) | 4)
+#define PV_DESC_FONT        10
+#define PV_DESCRIPTION(id)  ((const u8 *)0x082461A0 + (id) * CARD_DESCRIPTION_SIZE)   /* gCardDescriptions */
+#define PV_FOUND_COLOR      6           /* yellow */
+#define PV_FOUND_FONT       8
+#define PV_FOUND_GAP        4           /* pixels between the description and the packs */
+#define PV_FOUND_MAX        3           /* packs named, best chance first; the rest are counted */
+
+/* A Card Detail inside a duel: the duel step of the Campaign or of a Link Battle (both run DuelMainStep). */
+static int InDuel(void)
+{
+    return (gMain.callback == CB_Campaign && gMain.seqIndexCampaign == 4)
+        || ((void *)gMain.callback == (void *)CB_LinkBattle && gMain.seqState0 == 3);
+}
+
+/* "Found in: Vol.3 1.7%, Rare Selections 0.8% (locked), +2 more", or that no pack you pick holds it. */
+static void BuildFoundIn(u16 cardId, char *s)
+{
+    u16 number = gCardIdToNumber[cardId & CARD_ID_MASK];
+    u8 best[PV_FOUND_MAX];
+    u16 bestOdds[PV_FOUND_MAX];
+    char odds[6];
+    int found = 0;
+    int pack;
+    int i;
+    int k;
+
+    for (pack = 0; pack < PACKVIEW_PACK_COUNT; pack++) {
+        const struct PackViewCard *card = &sPackViewCards[sPackViewPacks[pack].first];
+        for (i = 0; i < sPackViewPacks[pack].count; i++, card++) {
+            if (card->number != number)
+                continue;
+            /* keep the PV_FOUND_MAX best normal-roll chances, in order */
+            for (k = found < PV_FOUND_MAX ? found : PV_FOUND_MAX; k > 0 && bestOdds[k - 1] < card->odds[0]; k--) {
+                if (k < PV_FOUND_MAX) {
+                    best[k] = best[k - 1];
+                    bestOdds[k] = bestOdds[k - 1];
+                }
+            }
+            if (k < PV_FOUND_MAX) {
+                best[k] = pack;
+                bestOdds[k] = card->odds[0];
+            }
+            found++;
+            break;
+        }
+    }
+    if (found == 0) {
+        AppendString(s, "Not in the packs you pick after a duel.");
+        return;
+    }
+    s = AppendString(s, "Found in: ");
+    for (k = 0; k < found && k < PV_FOUND_MAX; k++) {
+        if (k > 0)
+            s = AppendString(s, ", ");
+        s = AppendString(s, sPackViewPacks[best[k]].name);
+        s = AppendString(s, " ");
+        FormatOdds(odds, bestOdds[k]);
+        for (i = 0; odds[i] == ' '; i++)
+            ;
+        s = AppendString(s, odds + i);
+        if (!IsPackUnlocked(sPackViewPacks[best[k]].id))
+            s = AppendString(s, " (locked)");
+    }
+    if (found > PV_FOUND_MAX) {
+        s = AppendString(s, ", +");
+        s = AppendNumber(s, found - PV_FOUND_MAX);
+        AppendString(s, " more");
+    }
+}
+
+static void DrawDescriptionBox(const u8 *str)
+{
+    CardDetail_DrawTextBox(4, (PV_DESC_MAP_Y << 8) | PV_DESC_MAP_X, PV_DESC_SIZE, PV_DESC_TILE, PV_DESC_COLORS,
+                           PV_DESC_FONT, PV_DESC_POS, str, 1, 0);
+}
+
+void PackView_DrawDescription(u16 cardId)
+{
+    const u8 *description = PV_DESCRIPTION(cardId);
+    char found[128];
+    char both[CARD_DESCRIPTION_SIZE + 128];
+    char *s;
+    int row;
+    int col;
+    u16 tile;
+
+    if (InDuel()) {
+        DrawDescriptionBox(description);
+        return;
+    }
+    found[0] = 0;
+    BuildFoundIn(cardId, found);
+    /* the description as the game fits it, then the packs as a paragraph in the canvas space left below it */
+    CardDetail_RenderText(PV_DESC_SIZE, PV_DESC_POS, description, PV_DESC_COLORS, PV_DESC_FONT, 1);
+    if (gTextCanvas.bottom + PV_FOUND_GAP + PV_FOUND_FONT <= PV_DESC_ROWS * 8) {
+        TextDrawString(4, gTextCanvas.bottom + PV_FOUND_GAP, PV_FOUND_COLOR | TEXT_SIZE(PV_FOUND_FONT),
+                       (const u8 *)found);
+        if (gTextCanvas.bottom <= PV_DESC_ROWS * 8) {
+            gCardDetail.textHeight = (gTextCanvas.bottom - PV_FOUND_FONT) & ~1;    /* the last line's top */
+            TextCanvasToTiles((u16 *)ROW_TILES(PV_DESC_TILE), 0);
+            tile = PV_DESC_TILE;
+            for (row = 0; row < PV_DESC_ROWS; row++)
+                for (col = 0; col < 18; col++)
+                    gMain.bgMapBuffer[4][(row + PV_DESC_MAP_Y) * 32 + PV_DESC_MAP_X + col] = tile++;
+            return;
+        }
+    }
+    /* no room: one text, which CardDetail_RenderText shrinks to fit; if even that doesn't fit, the description */
+    s = AppendString(both, (const char *)description);
+    s = AppendString(s, "  ");
+    AppendString(s, found);
+    DrawDescriptionBox((const u8 *)both);
+    if (gTextCanvas.bottom >= 0xC0)
+        DrawDescriptionBox(description);
 }

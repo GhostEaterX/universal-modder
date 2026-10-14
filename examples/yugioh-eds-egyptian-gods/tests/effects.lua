@@ -4,12 +4,13 @@
 --                      separated; flags: d = Defense Position, s = set (face down), a = may be activated
 --                      (spell/trap canActivate). Zones 0-4 are monsters, 5-9 spells/traps.
 --   P_HAND / C_HAND    card IDs for the first hand slots; P_HANDN / C_HANDN set the hand size.
+--   P_GRAVE / C_GRAVE  card IDs for the graveyard, bottom first (replaces it).
 --   P_LP / C_LP        Life Points.
 -- Each log line: the monster zones (card IDs, "s" after a face-down one), LP, hand and graveyard sizes, and
 -- the zone links of every monster that has any, as kind/count=value (Ra's paid LP is kind 14, Slifer's drain
 -- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag.
 local P = { [0] = 0x020192E4, [1] = 0x020192E4 + 0xD64 }   -- gDuelPlayers[0], [1]
-local ZONES, ZONE_SIZE, HAND = 0x28, 0x94, 0x684
+local ZONES, ZONE_SIZE, HAND, GRAVE = 0x28, 0x94, 0x684, 0x904
 local frame, last = 0, ""
 
 local function env(name)
@@ -49,6 +50,16 @@ local function hand(player, spec, n)
     if n then emu:write8(P[player] + 2, tonumber(n)) end
 end
 
+local function grave(player, spec)
+    if not spec then return end
+    local n = 0
+    for id in spec:gmatch("%d+") do
+        emu:write32(P[player] + GRAVE + n * 4, tonumber(id) | (player == 1 and 0x1000 or 0))
+        n = n + 1
+    end
+    emu:write8(P[player] + 4, n)
+end
+
 local function side(player)
     local ids, links = {}, {}
     for z = 0, 4 do
@@ -69,6 +80,26 @@ local function side(player)
     return table.concat(ids, ","), table.concat(links, " ")
 end
 
+-- Card Detail: once its description box is in the BG3 map buffer (gMain.bgMapBuffer[4], cell (13, 4) = tile
+-- 0x248), "detail id=ID found=N": N is the yellow (colour 6) pixels left on the text canvas, which the "Found
+-- in" paragraph draws and the description (colour 7, shadow 9) doesn't.
+local DETAIL_ID, DESC_CELL, CANVAS = 0x02013D92, 0x0300245C + (4 * 32 + 13) * 2, 0x02000000
+local shownDetail = -1
+local function logDetail(say)
+    local id = emu:read16(DETAIL_ID)
+    if emu:read16(DESC_CELL) ~= 0x248 or id == 0 then
+        shownDetail = -1
+        return
+    end
+    if id == shownDetail then return end
+    shownDetail = id
+    local n = 0
+    for i = 0, 18 * 24 * 64 - 1 do
+        if emu:read8(CANVAS + i) == 6 then n = n + 1 end
+    end
+    say(string.format("detail id=%d found=%d", id, n))
+end
+
 callbacks:add("frame", function()
     frame = frame + 1
     if frame == 1 then
@@ -76,6 +107,8 @@ callbacks:add("frame", function()
         stage(1, env("C_ZONES"))
         hand(0, env("P_HAND"), env("P_HANDN"))
         hand(1, env("C_HAND"), env("C_HANDN"))
+        grave(0, env("P_GRAVE"))
+        grave(1, env("C_GRAVE"))
         if env("P_LP") then emu:write16(P[0], tonumber(env("P_LP"))) end
         if env("C_LP") then emu:write16(P[1], tonumber(env("C_LP"))) end
     end
@@ -88,4 +121,5 @@ callbacks:add("frame", function()
         console:log(string.format("f%d %s", frame, s))
         last = s
     end
+    logDetail(function(line) console:log(string.format("f%d %s", frame, line)) end)
 end)
