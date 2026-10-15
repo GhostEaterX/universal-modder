@@ -375,3 +375,5 @@
   logs the event and the offset when the printer reaches the NUL: the whole line, every page, was shown.
   Seven checks: the five lines to their new end (they fail on the build without the lines), Tea's 11th win
   (her usual line) and Rex's 10th-win line (unchanged).
+- **Results:** the whole `gods-3t-fx` suite is 77/77 against `gods-3t` (70 before, plus the 7 dialogue
+  checks), every control comparison as expected. `gods-3t-fx` is `8710dd2f...` from two fresh work dirs.

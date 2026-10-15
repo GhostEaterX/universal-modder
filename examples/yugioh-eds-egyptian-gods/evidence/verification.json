@@ -508,5 +508,42 @@
       "on a real device (Delta)",
       "reaching 10 wins by playing (the tests set the record in RAM)"
     ]
+  },
+  "tenth_win_lines": {
+    "decisions": "after the player's 10th win against Yugi, Tea, Joey, Tristan or Bakura (the win that switches them to their second deck), their 10th-win line (gOpponentResultTexts[].win10th) gets a new last page built around the user's sentence \"I better find some new cards and train more\"; data only (apply_gods.py --text 3); only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "8710dd2f4335187d5254c7a44ede052e11af77a1",
+      "patch_bytes": 67426,
+      "reproduced": "the same SHA-1 from two fresh work dirs",
+      "rom_diff": "against the second-deck build (637b7bd6...): 468 bytes, all inside dialogue records 1017, 2017, 3017, 4017 and 5016"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --control gods-3t.gba",
+    "suite_result": "77/77: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck and 7 dialogue checks; every control comparison as expected",
+    "oracles": [
+      {
+        "check": "Yugi / Tea / Joey / Tristan / Bakura at 9 wins, then a win: the 10th-win line is printed to the end of its new page (the printer reaches the record's NUL), then the record is 10",
+        "lines_build": "pass (5 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Tea's 11th win: her usual win line (2014)",
+        "lines_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Rex's 10th-win line (6016), unchanged",
+        "lines_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots of the five new pages: each fits the dialogue box (Joey's and Tristan's use all four lines)"
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "reaching the 10th win by playing (the tests set the record to 9 in RAM)"
+    ]
   }
 }
