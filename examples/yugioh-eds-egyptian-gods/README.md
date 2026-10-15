@@ -166,7 +166,8 @@ tested ROMs byte for byte:
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
 - `gods-3t-fx.gba`: SHA-1 `eabd901ffabcc1f0ae52cf68cca9e3890afd63ad`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization),
-  the Ritual monsters in the Extra Deck and the bosses' effects (with the CPU's Metalmorph). Earlier versions:
+  the Ritual monsters in the Extra Deck and the bosses' effects (with the CPU's Metalmorph); the user ran it in
+  Delta. Earlier versions:
   - `79361de1f81f7b94358b914559f172fe515ceed5`: before the CPU's Metalmorph (Joey's second deck traded it for
     Skull Dice); the user ran it in Delta;
   - `27e5fdeeb39f652fc4c15f2103f57695e467a827`: before the bosses' effects; the user ran it in Delta;
@@ -720,6 +721,8 @@ give it a hand of Blue-Eyes White Dragons it can't summon, so it goes straight t
 | ... from its hand over two turns: Red-Eyes attacks and Metalmorph is set; next turn the upgrade, then 2800 | pass | fails |
 | Without Red-Eyes Black Metal Dragon in its deck, the CPU leaves Metalmorph set | pass | pass |
 | The CPU's Dark Magician destroys your set card on a turn it Normal Summons to attack | pass | fails |
+
+On a real device, the user tested the build with the CPU's Metalmorph in Delta on iOS: it works.
 
 The Metalmorph check found a bug before release: the upgrade runs in two steps, and its second step found the
 zone empty, without a Metalmorph, so it tossed Red-Eyes' coin too and Red-Eyes Black Metal Dragon never came.

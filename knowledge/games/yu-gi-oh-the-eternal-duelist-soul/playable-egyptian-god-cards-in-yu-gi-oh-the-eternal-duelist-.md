@@ -270,6 +270,7 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **Joey's Metalmorph:** the original AI sets Metalmorph like any Trap and never activates it, and the upgrade
   to Red-Eyes Black Metal Dragon is a menu command only the human gets. The CPU now flips its set Metalmorph
   onto its Red-Eyes (its equip pick steered there) and makes the upgrade itself, over two turns from its hand.
+  The user tested it in Delta on iOS: it works.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

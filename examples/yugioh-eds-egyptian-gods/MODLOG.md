@@ -581,3 +581,6 @@
   - `gods-3t-fx` is `eabd901f...` (`.bps` 78,463 bytes), the same ROM and `.bps` from two fresh work dirs;
   - `gods`, `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .`
     pass.
+
+## 2026-10-15: the CPU's Metalmorph on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `eabd901f...` (Joey's Metalmorph, played by the CPU) works.

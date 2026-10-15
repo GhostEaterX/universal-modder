@@ -917,8 +917,14 @@
       "the boss-effects docs said the CPU uses its monster effects only on turns it doesn't Normal Summon to attack; that holds for its spells, but AiStepChangePositions gives it one monster effect after Main Phase 1 every turn (now checked)"
     ],
     "not_verified": [
-      "a real device",
       "a full duel against Joey's second deck that reaches the upgrade by drawing"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (eabd901f...)",
+      "result": "works"
+    }
   }
 }
