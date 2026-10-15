@@ -959,5 +959,46 @@
       "a full duel with these cards in a CPU deck (only Joey's Thousand Dragon, his second deck's B. Skull Dragon, Mako's Fortress Whale and Bakura's Dokurorider are in CPU decks)",
       "a link duel (Skull Guardian's question for the partner is wired as Suijin's)"
     ]
+  },
+  "cpu_extra_deck_monsters": {
+    "decisions": "the user asked to give the NPCs the Fusion and Ritual monsters too. Owners by fit with the deck; the large effects only from Tier 3 on (duelist IDs 1-5 Tier 1 ... 21-24 last); every one of the 15 monsters without a CPU owner got one; Yugi's regular deck left alone (the harness's test duels are against it), so Kaiser Dragon went to his second deck",
+    "data": "apply_gods.py --text 3, EXTRA_DECK_DECKS_3T: 38 one-for-one swaps in 14 decks (the deck region is full, 1168 of 1168 entries), each monster with Polymerization and the materials its deck lacked, or its Ritual Magic card; no card a DECK_TUNING_3T row changes, so 'before' is the original count; no added card is on the ban list",
+    "owners": {
+      "Yugi, 2nd deck": "Black Luster Soldier, Kaiser Dragon",
+      "Tristan, 2nd deck": "Garma Sword",
+      "Bakura, 2nd deck": "Chakra",
+      "Espa Roba": "Labyrinth Tank",
+      "Weevil": "Javelin Beetle",
+      "Mako": "Crab Turtle (and Fortress Whale)",
+      "Arkana": "Magician of Black Chaos",
+      "Umbra & Lumis": "Bickuribox",
+      "Kaiba": "Twin-Headed Thunder Dragon (and Blue-Eyes Ultimate Dragon)",
+      "Ishizu": "Skull Guardian",
+      "Shadi": "Skull Knight",
+      "Yami Bakura": "Zera The Mant",
+      "Yami Yugi": "Gaia the Dragon Champion",
+      "Simon": "Super War-Lion"
+    },
+    "cpu_spell_list": "gAiGenericSpells (0x08086394, 54 numbers) holds both Polymerizations and all nine Ritual Magic cards these monsters need",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "cb359368fac23fd8ce446df6ba481d4e0a4013c5",
+      "patch_bytes": 82710,
+      "patch_sha1": "f8468603744ab30d99bfed61828cdf4a46ab1c59",
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs (the second cloned eds-decomp from GitHub)",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "06e8f86b... put Kaiser Dragon in Yugi's regular deck: the staged duels changed (see gotchas)"
+    },
+    "suite_result": "228/228 against gods-3t: the 219 checks before plus 9 CPU summon checks; every control comparison as expected (17 not compared). The first build (06e8f86b, Kaiser Dragon in Yugi's regular deck) failed dozens of unrelated checks in the affected suites: the staged duels are against that deck",
+    "oracles": [
+      "the 14 changed decks load card for card (deck-tuning and second-deck suites, from the checkout's deck_lists.json), Mako's Fusion Deck holds Crab Turtle and Fortress Whale",
+      "the CPU fuses Kaiser Dragon, Gaia the Dragon Champion, Twin-Headed Thunder Dragon, Labyrinth Tank, Bickuribox and Skull Knight from its hand (control: passes, the engine's own fusion)",
+      "the CPU performs Dark Magic Ritual, Black Luster Ritual and Novox's Prayer for the monster in its Fusion Deck (control: fails)"
+    ],
+    "seen_in_the_emulator": "with Level 4 or lower materials and an empty human field the CPU Normal Summons a material and attacks instead of fusing (the original turn plan); with the human's Blue-Eyes out it fuses or performs the Ritual",
+    "not_verified": [
+      "a real device",
+      "full duels against the changed decks"
+    ]
   }
 }

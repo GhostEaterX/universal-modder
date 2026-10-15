@@ -38,7 +38,8 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole. After that 10th win,
   their usual 10th-win line gets a new last page that says so: "I better find some new cards and train
   more."
-- **CPU deck tuning (`gods-3t-fx.bps`):** 64 cards change in 26 of the 29 CPU decks.
+- **CPU deck tuning (`gods-3t-fx.bps`):** 64 cards change in 26 of the 29 CPU decks (38 more bring in the
+  Fusion and Ritual monsters below).
   - 41 of them were cards the CPU can never play, such as Snatch Steal (in 15 decks), Spellbinding Circle and
     Solemn Judgment.
   - The rest trade generic cards for ones that fit the duelist: Time Wizard for Joey, Fissure and Giant Rat for
@@ -106,6 +107,30 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   Guardian, get the strongest effects. An effect is also no bigger than the duelist who
   plays the card can carry: Mako's Fortress Whale and Bakura's Dokurorider got smaller ones. Blue-Eyes Ultimate Dragon and Meteor B. Dragon stay as they are. Their kind stays Fusion or
   Ritual, so they stay in the Extra Deck.
+
+  The CPU duelists play them too. Each card went to a duelist it fits, with what summons it (Polymerization
+  and any missing material, or the Ritual Magic card), in one-for-one swaps of filler. The large effects only
+  go to Tier 3 and later duelists:
+
+  | Duelist | Tier | Plays | Added with it |
+  |---|---|---|---|
+  | Yugi, 2nd deck | 1 | Black Luster Soldier, Kaiser Dragon | Black Luster Ritual; Polymerization, Fairy Dragon (he had Winged Dragon, Guardian of the Fortress #1) |
+  | Joey | 1 | Thousand Dragon (already) | |
+  | Joey, 2nd deck | 1 | B. Skull Dragon (already) | |
+  | Tristan, 2nd deck | 1 | Garma Sword | Garma Sword Oath |
+  | Bakura | 1 | Dokurorider (already) | |
+  | Bakura, 2nd deck | 1 | Chakra | Resurrection of Chakra |
+  | Espa Roba | 2 | Labyrinth Tank | Polymerization, Cannon Soldier (he had the Giga-tech Wolves) |
+  | Weevil | 2 | Javelin Beetle | Javelin Beetle Pact |
+  | Mako | 2 | Crab Turtle, Fortress Whale (already) | Turtle Oath |
+  | Arkana | 3 | Magician of Black Chaos | Dark Magic Ritual |
+  | Umbra & Lumis | 3 | Bickuribox | Polymerization, Dream Clown (they had Crass Clowns) |
+  | Kaiba | 4 | Twin-Headed Thunder Dragon | Thunder Dragon ×2 (he had Polymerization) |
+  | Ishizu | 4 | Skull Guardian | Novox's Prayer |
+  | Shadi | 4 | Skull Knight | Polymerization, Tainted Wisdom, Ancient Brain |
+  | Yami Bakura | 4 | Zera The Mant | Zera Ritual |
+  | Yami Yugi | 4 | Gaia the Dragon Champion | Polymerization, Gaia The Fierce Knight, Curse of Dragon |
+  | Simon | 5 | Super War-Lion | War-Lion Ritual |
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -192,10 +217,12 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `32a5568d91a4142943bea7b71695df1083c281de`, with the summon rules, the pack
+- `gods-3t-fx.gba`: SHA-1 `cb359368fac23fd8ce446df6ba481d4e0a4013c5`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization),
   the Ritual monsters in the Extra Deck, the bosses' effects (with the CPU's Metalmorph) and the Fusion and
-  Ritual effects; not yet run on a real device. Earlier versions:
+  Ritual effects (also in the CPU decks); not yet run on a real device. Earlier versions:
+  - `32a5568d91a4142943bea7b71695df1083c281de`: the Fusion and Ritual effects, before the CPU decks got the
+    monsters;
   - `eabd901ffabcc1f0ae52cf68cca9e3890afd63ad`: before the Fusion and Ritual effects; the user ran it in
     Delta;
   - `79361de1f81f7b94358b914559f172fe515ceed5`: before the CPU's Metalmorph (Joey's second deck traded it for
@@ -386,7 +413,8 @@ region still fits.
 | Grandpa | Spellbinding Circle → Negate Attack; Snatch Steal → Call Of The Haunted |
 
 **Left alone:**
-- the regular decks of Yugi, Tea and Tristan;
+- the regular decks of Yugi, Tea and Tristan (the test duels are against Yugi's, so it stays as the
+  original);
 - the Gods;
 - the CPU's scripted combos (Cyber-Stein, the Magnet Warriors and Valkyrion, Toon World);
 - the Exodia engines (Rare Hunter keeps Witch of the Black Forest and Sangan).
@@ -401,6 +429,35 @@ Sisters from the deck, and Mai's deck had none, so the combo could never finish.
 **The data:** `DECK_TUNING_3T` lists each changed card's count before and after, per deck. A deck is changed
 only when it holds the "before" counts, and skipped when it already holds the "after" ones. The new lists are
 sorted, like the original ones.
+
+**The Fusion and Ritual monsters (`EXTRA_DECK_DECKS_3T`, 38 cards in 14 decks).** The monsters with new
+effects go to the duelists listed under "Fusion and Ritual effects" above, with what summons them, against
+filler. A Fusion or Ritual monster moves to the Fusion Deck when the deck loads, so each one leaves its main
+deck a card shorter (Mako's and Yugi's second deck are 38 cards now). None of these swaps touches a card `DECK_TUNING_3T` changes, so
+the same before/after rule applies on the original counts.
+
+| Deck | Out → In |
+|---|---|
+| Yugi, 2nd deck | Yamatano Dragon Scroll, Meda Bat → Black Luster Ritual, Black Luster Soldier; Mystical Capture Chain, Mammoth Graveyard, Ryu-Kishin → Polymerization, Fairy Dragon, Kaiser Dragon |
+| Tristan, 2nd deck | Greenkappa, Shadow Specter → Garma Sword Oath, Garma Sword |
+| Bakura, 2nd deck | Weather Control, Temple of Skulls → Resurrection of Chakra, Chakra |
+| Espa Roba | Ceremonial Bell, Holograh, Big Eye → Polymerization, Cannon Soldier, Labyrinth Tank |
+| Weevil | Gokibore, Needle Worm → Javelin Beetle Pact, Javelin Beetle |
+| Mako | Magician of Faith ×2 → Turtle Oath, Crab Turtle (his Mother Grizzlies keep their small WATER targets) |
+| Arkana | Skelengel, Man-Eater Bug → Dark Magic Ritual, Magician of Black Chaos |
+| Umbra & Lumis | Penguin Soldier ×2, Morphing Jar → Polymerization, Dream Clown, Bickuribox |
+| Kaiba | Hoshiningen, Nimble Momonga, Koumori Dragon → Thunder Dragon ×2, Twin-Headed Thunder Dragon |
+| Ishizu | Banisher of the Light, Axe of Despair → Novox's Prayer, Skull Guardian (her Hoshiningen boost it: LIGHT) |
+| Shadi | Needle Worm, Banisher of the Light ×2, Seven Tools of the Bandit → Polymerization, Tainted Wisdom, Ancient Brain, Skull Knight |
+| Yami Bakura | Giant Soldier of Stone, Penguin Soldier → Zera Ritual, Zera The Mant |
+| Yami Yugi | Mystical Elf, Big Shield Gardna, Chorus of Sanctuary, Witch of the Black Forest → Polymerization, Gaia The Fierce Knight, Curse of Dragon, Gaia the Dragon Champion |
+| Simon | Muka Muka, Banisher of the Light → War-Lion Ritual, Super War-Lion |
+
+**When the CPU summons them:** it plays Polymerization and the Ritual Magic cards from its spell list, on a turn
+it doesn't Normal Summon to attack. With materials of Level 4 or lower in hand and your field empty, it
+summons one of them and attacks instead; with a monster on your side it can't attack past, it fuses or
+performs the Ritual. Gaia The Fierce Knight, Curse of Dragon and Thunder Dragon need Tributes, so with them it
+fuses even when your field is empty.
 
 ### How the Extra Deck rituals work (gods-3t-fx)
 The original game has one rule for the Fusion Deck: a card goes there when its kind is Fusion. It applies that
@@ -437,8 +494,9 @@ so it plays a Ritual Magic card on a turn it doesn't summon to attack. And for t
 highest-level card each time. It now also avoids tributing a Ritual monster for a Tribute Summon, as it
 already did a Fusion monster (`IsFusionMonster`).
 
-**The CPU decks:** Bakura's and Mako's main decks are 39 cards now, and Pegasus's 39 too (41 minus his two
-Relinquished). The deck region is full, so nothing was added; a 39-card deck runs out a turn sooner.
+**The CPU decks:** Bakura's main deck is 39 cards now, and Pegasus's 39 too (41 minus his two Relinquished).
+The deck region is full, so nothing was added; a 39-card deck runs out a turn sooner. The Fusion and Ritual
+monsters given to the CPU later shorten their decks the same way (Mako's is 38).
 
 ### How the bosses' effects work (gods-3t-fx)
 A two-Tribute monster with 2400 or 2500 ATK and no effect is a poor boss next to the game's own Effect monsters
@@ -818,8 +876,9 @@ the coin scene for both players, and the new card text in Card View ("[Spellcast
 Played once outside the suite: Dark Magician's alternate art (card 2034) destroys a set card the same way.
 On a real device, the user tested this build in Delta on iOS: it works.
 
-The Fusion and Ritual effects have their own suite, `--extra-deck-effects` (same control): 48 played checks
-and the 20 card texts. The battle checks attack from eds-decomp's `duel_turn2` state; the CPU's play from
+The Fusion and Ritual effects have their own suite, `--extra-deck-effects` (same control): 57 played checks
+and the 20 card texts. The decks that now hold these monsters load card for card in the deck-tuning and
+second-deck suites (their expectations come from the checkout's `deck_lists.json`). The battle checks attack from eds-decomp's `duel_turn2` state; the CPU's play from
 `duel_main1`, with the Blue-Eyes hand above. Numbers are 7 Colored Fish (1800/800), Blue-Eyes White Dragon
 (3000, LIGHT) and Dark Magician (2500, DARK).
 
@@ -843,6 +902,8 @@ and the 20 card texts. The battle checks attack from eds-decomp's `duel_turn2` s
 | Gaia has no Activate against only a stronger monster, a set one, or once its effect is used | pass | pass |
 | The CPU's Gaia destroys a Defense Position monster, or one of two, and doesn't attack; against one Attack Position monster it attacks it | pass | fails; passes |
 | Regressions: Dream Clown destroys, Suijin zeroes, Goddess of Whim's coin links, Mechanical Spider takes Dark Magician | pass | pass |
+| The CPU fuses each recipe its decks now hold, from its hand: Kaiser Dragon, Gaia the Dragon Champion, Twin-Headed Thunder Dragon, Labyrinth Tank, Bickuribox, Skull Knight | pass | pass (the engine's own fusion) |
+| The CPU performs Dark Magic Ritual, Black Luster Ritual and Novox's Prayer for the monster in its Fusion Deck | pass | fails |
 | The 20 new card texts are in the ROM | pass | fails |
 
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
@@ -884,7 +945,8 @@ Also checked:
   counts no copies of them in the Deck). Move them to the Trunk before you take the save to another build.
 - **The Fusion Deck's 20 cards are shared:** Fusion and Ritual monsters together.
 - **The CPU's rituals depend on its turn plan:** it plays a Ritual Magic card on a turn it doesn't Normal
-  Summon to attack (the original AI's order), and Bakura's, Mako's and Pegasus's main decks are 39 cards.
+  Summon to attack (the original AI's order). Its main decks hold 38 to 40 cards: each Fusion or Ritual monster
+  leaves one fewer (Mako's and Yugi's second deck are 38).
 - **The bosses' effects and the CPU:**
   - it activates Dark Magician and Red-Eyes whenever it finds a target, without weighing it; on a turn it
     Normal Summons to attack, it gets one monster effect, after Main Phase 1;
@@ -901,9 +963,8 @@ Also checked:
 - **The bosses are Effect monsters now:** Deck Edit's Normal Monsters filter no longer lists Summoned Skull,
   Millennium Golem, Dark Magician or Red-Eyes B. Dragon, and their frames are orange.
 - **The Fusion and Ritual effects and the CPU:**
-  - few CPU decks hold these cards: Joey's Thousand Dragon, his second deck's B. Skull Dragon, Mako's
-    Fortress Whale and Bakura's Dokurorider (and Kaiba's Blue-Eyes Ultimate Dragons, unchanged). The rest only
-    make your decks stronger. Giving the CPU some of them is a separate decision, not made yet;
+  - a Fusion monster needs both materials and Polymerization in the CPU's hand, and it plays the spell only on a turn it doesn't summon to attack, so it fuses less often than you can;
+    Kaiba's Twin-Headed Thunder Dragon needs both of his Thunder Dragons;
   - it tosses Thousand Dragon's coin whenever its Thousand Dragon is in Attack Position, so half the time it
     halves its own ATK for the turn;
   - it moves a Bickuribox to Defense Position only when you have a face-up monster at least as strong, and

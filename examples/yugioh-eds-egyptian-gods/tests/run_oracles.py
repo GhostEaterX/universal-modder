@@ -360,8 +360,8 @@ RECRUIT_KEYS = BATTLE_KEYS + "; 1300-1600/60 A"
 
 def deck_tuning_suite(rituals=False):
     sys.path.insert(0, str(HERE.parent / "scripts"))
-    from apply_gods import DECK_TUNING_3T, O
-    tuned = sorted(i for table, i in DECK_TUNING_3T if table == O)
+    from apply_gods import DECK_TUNING_3T, EXTRA_DECK_DECKS_3T, O
+    tuned = sorted({i for table, i in [*DECK_TUNING_3T, *EXTRA_DECK_DECKS_3T] if table == O})
     recruit = lambda name, card, target: check(
         f"deck tuning: the CPU's {name} recruits", E, "duel_turn2", 1700, RECRUIT_KEYS,
         {"P_ZONES": "0:82", "C_ZONES": f"0:{card}", "C_DECK": str(target)}, rf"C {target},0,0,0,0", control="passes")
@@ -411,7 +411,7 @@ def extra_deck_rituals_suite(effects=False):
         {"OPP": str(opp)}, rf"fusion ids: {ids}(\n|$)")
     return [
         fusion_deck("Bakura", 5, "176"),                # Dokurorider
-        fusion_deck("Mako", 9, "245"),                  # Fortress Whale
+        fusion_deck("Mako", 9, "120 245"),              # Crab Turtle (EXTRA_DECK_DECKS_3T), Fortress Whale
         fusion_deck("Pegasus", 23, "582 582"),          # two Relinquished
         check("Extra Deck: Deck Edit files a ritual in the Fusion Deck", DE, "main_menu", 700, TO_DECK_KEYS,
               {"TRUNK": BLS}, r"saved deck=40 side=0 fusion=1 trunk=0"),
@@ -666,6 +666,35 @@ def extra_deck_effects_suite():
             r"P 0,1,0,0,0 C 251,0,0,0,0 LP 8000 8000 hand 6 6 grave 1 0 links P\{\} C\{0\[ noatk\]\}", frames=4500),
         cpu("... and attacks a lone Attack Position one", {"C_ZONES": "0:251:u", "P_ZONES": "0:1"},
             r"P 0,0,0,0,0 C 251,0,0,0,0 LP 7200 8000", control="passes"),
+        # what the CPU's decks now hold (EXTRA_DECK_DECKS_3T): it summons each new recipe from its hand when the
+        # human has a monster it can't attack past (else it Normal Summons a material to attack). The fusions
+        # are the engine's own, so they pass on the control; the rituals come from the Extra Deck.
+        cpu("the CPU fuses Kaiser Dragon (Yugi's second deck)", {"C_HAND": "552,793,211,82,82", "C_FUSION": "368",
+                                                   "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 368,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU fuses Gaia the Dragon Champion (Yami Yugi)", {"C_HAND": "552,252,128,82,82", "C_FUSION": "251",
+                                                                    "P_HAND": SIX("1")},
+            r"C 251,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU fuses Twin-Headed Thunder Dragon (Kaiba)", {"C_HAND": "552,719,719,82,82", "C_FUSION": "749",
+                                                                  "P_HAND": SIX("1")},
+            r"C 749,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU fuses Labyrinth Tank (Espa Roba)", {"C_HAND": "552,280,99,82,82", "C_FUSION": "395",
+                                                         "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 395,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU fuses Bickuribox (Umbra & Lumis)", {"C_HAND": "552,121,186,82,82", "C_FUSION": "63",
+                                                         "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 63,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU fuses Skull Knight (Shadi)", {"C_HAND": "552,687,15,82,82", "C_FUSION": "637",
+                                                   "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 637,0,0,0,0 [^\n]*fusion P\{\} C\{\}", control="passes"),
+        cpu("the CPU's Dark Magic Ritual (Arkana)", {"C_HAND": "149,82,82,82,82", "C_FUSION": "433", "P_HAND": SIX("1")},
+            r"C 433,0,0,0,0 [^\n]*fusion P\{\} C\{\}"),
+        cpu("the CPU's Black Luster Ritual (Yugi's second deck)", {"C_HAND": "70,1,1,82,82", "C_FUSION": "71",
+                                                                    "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 71,[^\n]*fusion P\{\} C\{\}"),
+        cpu("the CPU's Novox's Prayer (Ishizu)", {"C_HAND": "524,1,1,82,82", "C_FUSION": "636",
+                                                  "P_HAND": SIX("1"), "P_ZONES": "0:82"},
+            r"C 636,[^\n]*fusion P\{\} C\{\}"),
         # the cards they borrow from
         main("regression: Dream Clown still destroys", 1500, BICKURIBOX_KEYS, {"P_ZONES": "0:186", "C_ZONES": "0:82"},
              r"P 186,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1", control="passes"),

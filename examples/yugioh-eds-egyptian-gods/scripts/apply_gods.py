@@ -12,7 +12,8 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
   - cards/passwords.csv                     their TCG passwords, so the password screen hands them out
   - tables/rodata2/card_copy_limits.json    ban list: 0 copies -> GOD_COPY_LIMIT
   - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God; with
-                                            --text 3, also the CPU deck tuning (DECK_TUNING_3T)
+                                            --text 3, also the CPU deck tuning (DECK_TUNING_3T) and the Fusion
+                                            and Ritual monsters for the CPU (EXTRA_DECK_DECKS_3T)
   - cards/descriptions.json                 with --text 2|3 (the effects builds): the Gods' effect text in
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
                                             the summon rules that patch_god_rules.py builds, and Senju of the
@@ -234,6 +235,114 @@ DECK_TUNING_3T = {
         (960, 0, 1),   # Negate Attack
         (1068, 1, 0),  # Snatch Steal
         (1095, 0, 1),  # Call Of The Haunted
+    ],
+}
+# The three-Tribute effects build also gives the Fusion and Ritual monsters with new effects
+# (patch_extra_deck_effects.py) to the CPU duelists they fit, each with what summons it: Polymerization and the
+# Fusion Material Monsters the deck lacks, or the Ritual Magic card (the CPU plays both from gAiGenericSpells).
+# Swaps are one for one against filler, as above (the deck region is full), and touch no card DECK_TUNING_3T
+# changes, so "before" is the count in the original deck. Large effects only from Tier 3 on (Yami Yugi's Gaia,
+# Ishizu's Skull Guardian, Simon's Super War-Lion).
+EXTRA_DECK_DECKS_3T = {
+    (A, 1): [   # Yugi Muto, second deck: Black Luster Soldier and Kaiser Dragon
+        (121, 1, 0),    # Yamatano Dragon Scroll
+        (244, 1, 0),    # Meda Bat
+        (669, 0, 1),    # Black Luster Ritual
+        (363, 0, 1),    # Black Luster Soldier
+        (133, 1, 0),    # Mystical Capture Chain
+        (58, 2, 1),     # Mammoth Graveyard
+        (4, 1, 0),      # Ryu-Kishin
+        (1003, 0, 1),   # Polymerization
+        (602, 0, 1),    # Fairy Dragon
+        (426, 0, 1),    # Kaiser Dragon
+    ],
+    (A, 4): [   # Tristan Taylor, second deck: Garma Sword
+        (585, 1, 0),    # Greenkappa
+        (8, 1, 0),      # Shadow Specter
+        (696, 0, 1),    # Garma Sword Oath
+        (715, 0, 1),    # Garma Sword
+    ],
+    (A, 5): [   # Bakura Ryou, second deck: Chakra
+        (129, 1, 0),    # Weather Control
+        (145, 1, 0),    # Temple of Skulls
+        (693, 0, 1),    # Resurrection of Chakra
+        (708, 0, 1),    # Chakra
+    ],
+    (O, 7): [   # Espa Roba: Labyrinth Tank
+        (1121, 1, 0),   # Ceremonial Bell
+        (282, 2, 1),    # Holograh
+        (170, 2, 1),    # Big Eye
+        (1003, 0, 1),   # Polymerization
+        (511, 0, 1),    # Cannon Soldier
+        (369, 0, 1),    # Labyrinth Tank
+    ],
+    (O, 8): [   # Weevil Underwood: Javelin Beetle
+        (53, 2, 1),     # Gokibore
+        (561, 2, 1),    # Needle Worm
+        (695, 0, 1),    # Javelin Beetle Pact
+        (716, 0, 1),    # Javelin Beetle
+    ],
+    (O, 9): [   # Mako Tsunami: Crab Turtle
+        (427, 3, 1),    # Magician of Faith
+        (691, 0, 1),    # Turtle Oath
+        (709, 0, 1),    # Crab Turtle
+    ],
+    (O, 12): [   # Arkana: Magician of Black Chaos
+        (539, 3, 2),    # Skelengel
+        (500, 3, 2),    # Man-Eater Bug
+        (720, 0, 1),    # Dark Magic Ritual
+        (721, 0, 1),    # Magician of Black Chaos
+    ],
+    (O, 14): [   # Umbra & Lumis: Bickuribox
+        (601, 2, 0),    # Penguin Soldier
+        (590, 2, 1),    # Morphing Jar
+        (1003, 0, 1),   # Polymerization
+        (119, 0, 1),    # Dream Clown
+        (384, 0, 1),    # Bickuribox
+    ],
+    (O, 16): [   # Kaiba Seto: Twin-Headed Thunder Dragon
+        (491, 3, 2),    # Hoshiningen
+        (1115, 2, 1),   # Nimble Momonga
+        (30, 2, 1),     # Koumori Dragon
+        (424, 0, 2),    # Thunder Dragon
+        (612, 0, 1),    # Twin-Headed Thunder Dragon
+    ],
+    (O, 17): [   # Ishizu Ishtar: Skull Guardian
+        (1107, 2, 1),   # Banisher of the Light
+        (303, 3, 2),    # Axe of Despair
+        (678, 0, 1),    # Novox's Prayer
+        (703, 0, 1),    # Skull Guardian
+    ],
+    (O, 18): [   # Shadi: Skull Knight
+        (561, 3, 2),    # Needle Worm
+        (1107, 2, 0),   # Banisher of the Light
+        (1030, 2, 1),   # Seven Tools of the Bandit
+        (1003, 0, 1),   # Polymerization
+        (161, 0, 1),    # Tainted Wisdom
+        (174, 0, 1),    # Ancient Brain
+        (706, 0, 1),    # Skull Knight
+    ],
+    (O, 19): [   # Yami Bakura: Zera The Mant
+        (73, 1, 0),     # Giant Soldier of Stone
+        (601, 1, 0),    # Penguin Soldier
+        (670, 0, 1),    # Zera Ritual
+        (359, 0, 1),    # Zera The Mant
+    ],
+    (O, 20): [   # Yami Yugi: Gaia the Dragon Champion
+        (1, 1, 0),      # Mystical Elf
+        (1201, 2, 1),   # Big Shield Gardna
+        (1069, 1, 0),   # Chorus of Sanctuary
+        (573, 2, 1),    # Witch of the Black Forest
+        (1003, 0, 1),   # Polymerization
+        (37, 0, 1),     # Gaia The Fierce Knight
+        (38, 0, 1),     # Curse of Dragon
+        (36, 0, 1),     # Gaia the Dragon Champion
+    ],
+    (O, 22): [   # Simon: Super War-Lion
+        (515, 2, 1),    # Muka Muka
+        (1107, 1, 0),   # Banisher of the Light
+        (672, 0, 1),    # War-Lion Ritual
+        (355, 0, 1),    # Super War-Lion
     ],
 }
 DIALOGUE_TEXT = 0x300               # text bytes per dialogue record, NUL included
@@ -461,7 +570,7 @@ def main():
     if args.text == 3:
         names = json.loads((assets / "cards" / "names.json").read_text(encoding="utf-8"))
         number_to_id = json.loads((assets / "cards" / "number_to_id.json").read_text(encoding="utf-8"))
-        for (table, index), rows in DECK_TUNING_3T.items():
+        for (table, index), rows in [*DECK_TUNING_3T.items(), *EXTRA_DECK_DECKS_3T.items()]:
             deck = data[table][index]
             have = Counter(n for n, _ in deck["cards"])
             if all(have[n] == after for n, _, after in rows):

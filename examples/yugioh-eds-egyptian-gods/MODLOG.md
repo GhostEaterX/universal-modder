@@ -640,3 +640,42 @@
   - `gods-3t-fx` is `32a5568d...` (`.bps` 82,537 bytes), the same ROM and `.bps` from two fresh work dirs (the
     second cloned eds-decomp from GitHub); `gods`, `gods-3t` and `gods-fx` rebuild unchanged;
   - pytest, `um kb check --index` and `um publish check .` pass.
+
+## 2026-10-15: the Fusion and Ritual monsters in the CPU decks (in `gods-3t-fx`)
+- **User's ask:** give the NPCs the monsters too (the decision left open with the effects).
+- **The rule for owners:** the card fits the duelist's deck (Weevil's insect, Mako's water, Arkana's Dark
+  Magicians, Umbra & Lumis' clowns, Espa Roba's machines, Yami Yugi's Gaia); the large effects (Gaia, Super
+  War-Lion, Skull Guardian) only from Tier 3 on, by duelist ID (1-5 Tier 1 ... 21-24 last), the grouping the
+  analysis used. Every one of the 15 monsters without a CPU owner got one; Joey's, Mako's and Bakura's existing
+  ones stay.
+- **What summons them:** the CPU plays Polymerization and every Ritual Magic card these need from
+  `gAiGenericSpells` (dumped from the ROM to check: both Polymerizations and all nine Ritual Magic cards are
+  there). So a Fusion owner gets Polymerization and the materials it lacked (preferring decks that already
+  held one: Yugi's second deck's Winged Dragon #1, Espa Roba's Giga-tech Wolves, Umbra & Lumis' Crass Clowns, Kaiba's
+  Polymerization), a Ritual owner its Ritual Magic card.
+- **The data:** `EXTRA_DECK_DECKS_3T` in `apply_gods.py`, 38 cards in 14 decks, one for one: the deck region is
+  exactly full (1168 of 1168 entries). No card any of these swaps touches is changed by `DECK_TUNING_3T`, so both
+  tables keep the "before = original count" rule and stay idempotent; the rows were computed from the untuned
+  data by a script, not counted by hand. None of the added cards is on the ban list, which the loader enforces
+  by dropping every copy of an over-limit card.
+- **Swap-outs:** filler (Ancient Jar, Air Marmot, Weather Control, Banisher of the Light, Penguin Soldier,
+  Skelengel, a Needle Worm...). Mako first gave up Penguin Knight and a Penguin Soldier, but those are what his
+  Mother Grizzlies recruit, so he gives up two Magician of Faith instead.
+- **Seen in the emulator before writing the data:** with Polymerization and both materials in hand, the CPU fused
+  Gaia the Dragon Champion and Twin-Headed Thunder Dragon at once (their materials need Tributes, so it had
+  nothing to summon). With Level 4 or lower materials and an empty human field, it Normal Summoned a material
+  and attacked; with the human's Blue-Eyes out it fused Kaiser Dragon, Labyrinth Tank, Bickuribox and Skull
+  Knight, and performed Black Luster Ritual and Novox's Prayer (a hand of two Level 4 monsters and two
+  Blue-Eyes; it set one of the Level 4s besides). That is the
+  original AI's turn plan (spells only on a turn it doesn't summon to attack), so the checks stage that case.
+- **Gotcha, the test duels are against Yugi:** the first version put Kaiser Dragon in Yugi's regular deck, and
+  the affected suites failed in dozens of unrelated checks (B. Skull Dragon's piercing among them): the harness's
+  `duel_main1` and `duel_turn2` states are a duel against that deck, so its new cards changed the shuffle, the
+  CPU's first turn, the LP and the Fusion Deck of every staged duel. Kaiser Dragon went to Yugi's second deck
+  instead (it has the same Winged Dragon), and Yugi's regular deck stays as the original.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 228/228 against `gods-3t` (219 before, plus 9 CPU summon checks), every
+    control comparison as expected (17 not compared); the 14 changed decks load card for card;
+  - `gods-3t-fx` is `cb359368...` (`.bps` 82,710 bytes), the same ROM and `.bps` from two fresh work dirs (the
+    second cloned eds-decomp from GitHub); `gods`, `gods-3t` and `gods-fx` rebuild unchanged;
+  - pytest, `um kb check --index` and `um publish check .` pass.

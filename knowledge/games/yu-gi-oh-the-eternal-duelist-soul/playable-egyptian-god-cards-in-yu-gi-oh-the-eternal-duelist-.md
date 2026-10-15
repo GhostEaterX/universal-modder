@@ -281,7 +281,9 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   cannot-attack flag. Their kind stays Fusion or Ritual, which files them in the Extra Deck; that kind gives
   an effect no spell speed, which only matters when it answers a chain link. The CPU plays them too; for
   Bickuribox it now switches to Defense Position itself (39). 68 checks (48 played, 20 card texts) fail on the
-  build before; the cards they borrow from still work. Not yet run on a real device.
+  build before; the cards they borrow from still work. Not yet run on a real device. Then the CPU decks got
+  them too: 38 one-for-one swaps in 14 decks, each monster with its Polymerization and missing materials or its
+  Ritual Magic card (all on the CPU's spell list), large effects only from Tier 3 on.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
@@ -448,6 +450,13 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
     (`git worktree remove --force`) before rebuilding with changed sources.
 42. **Check what the data says a card is.** The Gods are DARK in EDS's stats, so an anti-LIGHT rule never
     touches them and an anti-DARK one (Kaiser Dragon's +1000, Mechanical Spider's destroy) does.
+43. **The test duels are against one CPU deck, so leave that deck alone.** eds-decomp's `duel_main1` and
+    `duel_turn2` states are a duel against Yugi. Changing his deck changed the shuffle, the CPU's first turn,
+    its LP and its Fusion Deck in every staged check, and dozens of unrelated checks failed. The change went to
+    his second deck instead.
+44. **The CPU fuses on its spell turns only.** With Polymerization and two Level 4 materials in hand, the original
+    AI Normal Summons a material to attack an empty field; it fuses when it can't attack past your monster, or
+    when the materials need Tributes. Stage the human's monster in a fusion test.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the
