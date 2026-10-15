@@ -253,6 +253,20 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   build; a ritual from the hand and a Normal monster to the Side Deck still work.
 - **On a real device:** the user tested this build in Delta on iOS: it works.
 
+### Also in the fourth build: the bosses' effects
+- **The ask:** the CPU's Normal-monster bosses (Summoned Skull, Millennium Golem, Dark Magician, Red-Eyes)
+  cost Tributes for bare stats. Each gets an effect that keeps paying on the field but leaves it removable.
+- **Reuse, not new AI:** piercing (Summoned Skull), survival (Millennium Golem) and a quarter of Metalmorph's
+  bonus (Red-Eyes Black Metal Dragon) are three lines in `CalcBattle`. Dark Magician (destroy 1 Spell/Trap)
+  and Red-Eyes (a coin to destroy 1 monster) are new effect-table rows shaped like Barrel Dragon's: its
+  once-per-turn prepare, a check, a pick, and the turn-start reset of `effectUnused`. The CPU activates them
+  after the Gods, from the same activation check.
+- **Kind matters:** a Normal monster's effect row is never offered. Stats kind Normal -> Effect gives the
+  monster effect its spell speed (and the orange frame).
+- **Checks:** both players' piercing, survival, Spell/Trap destruction (once per turn, reset on the next turn),
+  the coin on heads and on tails (RNG pinned), and the bonus fail on the old build; Raigeki on Golem, the
+  Metalmorph upgrade, B. Skull Dragon's fusion and Black Metal Dragon attacked are unchanged.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -382,6 +396,18 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 33. **A frame can end in the middle of a routine.** The CPU's deck shuffle runs across a few frames, so a
     frame-end snapshot can catch a swap half done (one card in two slots). New hooks shift the timing enough
     to expose it. Read a list once it holds the same cards two frames in a row.
+34. **Rows appended to a binary-searched table are invisible.** `FindCardEffect` binary-searches the sorted
+    effect table by card number, and new rows with low numbers (Dark Magician is 34) can't go at the end.
+    Keep the sorted part sorted and fall back to a short linear search of the appended rows when the binary
+    search fails; make the table check prove their numbers aren't in the sorted part.
+35. **A multi-step menu command re-runs its whole case each step.** Red-Eyes' original Activate (Tribute it
+    for Red-Eyes Black Metal Dragon) runs in two calls of the dispatcher. A new branch on "no Metalmorph
+    equipped" was true again at step 1, after the Tribute emptied the zone, so it fired the new effect too.
+    Pin such a fork to step 0. Only the regression test of the old path caught it.
+36. **Pin the RNG for a coin, and log the coin.** A coin effect's test pins gMain's RNG state at frame 1 and
+    reads the toss from `gDuelScene` (scene 0; arg bits 8-14 the count, bit i coin i), so "tails, nothing
+    destroyed" is a real result and not an effect that never ran. The same pinned state can land the other
+    way on the CPU's turn (it draws and plans first), so find each test's state by running it.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

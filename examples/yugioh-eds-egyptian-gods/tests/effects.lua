@@ -2,17 +2,20 @@
 -- field from environment variables, then logs the state on every change while the input script plays:
 --   P_ZONES / C_ZONES  the player's / CPU's monster and spell-trap zones: "zone:id[:flags]" items, comma
 --                      separated; flags: d = Defense Position, s = set (face down), a = may be activated
---                      (spell/trap canActivate). Zones 0-4 are monsters, 5-9 spells/traps.
+--                      (spell/trap canActivate), e = its once-per-turn effect unused (as a monster just
+--                      summoned), u = used. Zones 0-4 are monsters, 5-9 spells/traps.
 --   P_HAND / C_HAND    card IDs for the first hand slots; P_HANDN / C_HANDN set the hand size.
 --   P_GRAVE / C_GRAVE  card IDs for the graveyard, bottom first (replaces it).
 --   P_LP / C_LP        Life Points.
 --   C_DECK / P_DECK    card IDs written over the CPU's / player's whole deck, cycling through the list (its size
 --                      stays), so a search or a recruit finds them.
 --   P_FUSION / C_FUSION  card IDs for the Fusion Deck (replaces it).
+--   PIN_RNG            an RNG state (hex) written at frame 1 (gMain's first word), for a coin toss.
 -- Each log line: the monster zones (card IDs, "s" after a face-down one), LP, hand and graveyard sizes, and
 -- the zone links of every monster that has any, as kind/count=value (Ra's paid LP is kind 14, Slifer's drain
 -- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag; then the Fusion
--- Decks' card IDs, "fusion P{...} C{...}".
+-- Decks' card IDs, "fusion P{...} C{...}". A coin toss scene logs "coin heads" or "coin tails" (one word per
+-- coin) when it starts.
 local P = { [0] = 0x020192E4, [1] = 0x020192E4 + 0xD64 }   -- gDuelPlayers[0], [1]
 local ZONES, ZONE_SIZE, HAND, GRAVE, DECK, FUSION = 0x28, 0x94, 0x684, 0x904, 0x7C4, 0xA44
 local frame, last = 0, ""
@@ -32,6 +35,8 @@ local function setzone(player, zone, id, flags)
     if flags:find("d") or (zone <= 4 and flags:find("s")) then f6 = f6 | 0x1 end
     emu:write8(a + 6, f6)
     if flags:find("a") then emu:write8(a + 0x91, emu:read8(a + 0x91) | 0x4) end
+    if flags:find("e") then emu:write8(a + 7, emu:read8(a + 7) | 0x20) end          -- effectUnused
+    if flags:find("u") then emu:write8(a + 7, emu:read8(a + 7) & ~0x20) end
 end
 
 local function stage(player, spec)
@@ -130,6 +135,20 @@ local function logDetail(say)
     say(string.format("detail id=%d found=%d", id, n))
 end
 
+-- gDuelScene: id (bits 0-14) at +4, arg at +6. The coin toss (id 0): bits 8-14 the coin count, bit i the face
+-- of coin i (1 = tails).
+local SCENE = 0x02017A30
+local lastCoin
+local function logCoin(say)
+    local arg = emu:read16(SCENE + 6)
+    if lastCoin == nil then lastCoin = arg end         -- whatever the duel's start left there
+    if (emu:read16(SCENE + 4) & 0x7FFF) ~= 0 or (arg & 0x7F00) == 0 or arg == lastCoin then return end
+    lastCoin = arg
+    local faces = {}
+    for i = 0, ((arg >> 8) & 0x7F) - 1 do faces[#faces + 1] = ((arg >> i) & 1) == 1 and "tails" or "heads" end
+    say("coin " .. table.concat(faces, " "))
+end
+
 callbacks:add("frame", function()
     frame = frame + 1
     if frame == 1 then
@@ -145,6 +164,7 @@ callbacks:add("frame", function()
         fusion(1, env("C_FUSION"))
         if env("P_LP") then emu:write16(P[0], tonumber(env("P_LP"))) end
         if env("C_LP") then emu:write16(P[1], tonumber(env("C_LP"))) end
+        if env("PIN_RNG") then emu:write32(0x03000040, tonumber(env("PIN_RNG"), 16)) end   -- gMain's RNG state
     end
     local pz, pl = side(0)
     local cz, cl = side(1)
@@ -156,4 +176,5 @@ callbacks:add("frame", function()
         last = s
     end
     logDetail(function(line) console:log(string.format("f%d %s", frame, line)) end)
+    logCoin(function(line) console:log(string.format("f%d %s", frame, line)) end)
 end)

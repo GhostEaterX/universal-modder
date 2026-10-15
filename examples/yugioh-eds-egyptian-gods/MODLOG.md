@@ -489,3 +489,52 @@
 
 ## 2026-10-15: Kaiba's Polymerization on a real device
 - **Delta on iOS (user's test):** `gods-3t-fx` `27e5fdee...` works.
+
+## 2026-10-15: the bosses' effects (in `gods-3t-fx`)
+- **User's ask:** make the CPU's boss monsters worth their Tributes, with effects that fit each one and keep
+  paying while it stays on the field, like Suijin or Jinzo, and that still leave it open to Trap Hole, Dark
+  Hole, Hane-Hane or Penguin Knight. Their picks: Summoned Skull pierces; Millennium Golem can't be destroyed by
+  battle; Dark Magician destroys 1 Spell or Trap card once per turn; Red-Eyes B. Dragon tosses a coin once per
+  turn to destroy a monster; Red-Eyes Black Metal Dragon gets a weaker Metalmorph (+¼ of the attacked
+  monster's ATK, Metalmorph gives ½); the Duel Computer gets two Barrel Dragons for two White Magical Hats.
+- **The design rule:** reuse a mechanic the engine already runs, so the CPU uses it with no new AI. Piercing,
+  survival and the bonus are three lines in `CalcBattle`. The two activated effects copy Barrel Dragon's
+  row shape (once-per-turn prepare, opponent check, pick), with Dust Tornado's prompt for Dark Magician and
+  Barrel Dragon's for Red-Eyes, Mystical Space Typhoon's destroy, and Time Wizard's one-coin scene.
+- **The code:** `src/boss_effects.c` (new unit) and `scripts/patch_boss_effects.py`, 11 anchored edits in 8
+  files:
+  - three effect rows after the Gods' in `gCardEffectsMod` (Dark Magician 34, its alternate art 2034, Red-Eyes
+    81). They break the sort, so `FindCardEffect` falls back to a linear `BossFindCardEffect` when its binary
+    search fails, and `check_effect_table.py --boss-rows` checks them (Thumb handlers, numbers not in the
+    sorted part);
+  - every handler in those rows is a wrapper in the new unit, so all row pointers stay Thumb addresses in the
+    new code, as the table check requires;
+  - the monster menu, the menu's Activate dispatch, the turn-start reset of `effectUnused`, Red-Eyes' prompt,
+    and the CPU after `GodAiActivateEffects`.
+- **The data (`apply_gods.py --text 3`, `BOSSES_3T`):** Summoned Skull, Millennium Golem, both Dark Magicians
+  and Red-Eyes B. Dragon go from kind Normal to Effect. Without that, a monster effect has no spell speed and
+  the menu never offers it; it also gives the orange frame and "[Fiend/Effect]". All six get new text in my
+  own wording. The Duel Computer's swap is in `DECK_TUNING_3T` (65 cards in 26 decks now).
+- **Gotcha, Red-Eyes already had an Activate:** the original menu offers it on a Red-Eyes with Metalmorph
+  equipped, to Tribute it for Red-Eyes Black Metal Dragon from the Deck (two steps in `duel_cmd_queue.c`).
+  The fork: without a Metalmorph, the menu asks the effect row and the dispatch adds the chain link; with one,
+  the upgrade as before.
+- **Bug found by the regression test:** the first build tossed the coin after the upgrade's Tribute, and Red-Eyes
+  Black Metal Dragon never came. The dispatch runs once per step; at step 1 the zone is empty, so "no
+  Metalmorph" was true. The fork now runs only at step 0.
+- **Harness:** `effects.lua` flags `e` / `u` stage a monster's once-per-turn effect unused or used (zone byte
+  7, bit 5), `PIN_RNG` writes gMain's RNG state at frame 1, and a coin toss logs "coin heads" / "coin tails"
+  from `gDuelScene` (0x02017A30: scene 0, arg bits 8-14 the count, bit i coin i). The CPU checks give it five
+  Blue-Eyes it can't summon (and a deck of them), so its turn goes to its effects and its attack.
+- **Seen in the emulator:** the CPU's Dark Magician takes a set card first; the CPU's Red-Eyes targets your
+  strongest monster (Barrel Dragon's pick); a used Dark Magician's menu has two commands (no Activate).
+- **An old check met the new kind:** the first full run failed one rules check, "Deck Edit: Effect Monsters
+  lists Obelisk": the Trunk of the test save holds a Dark Magician, and the filter listed it with the Gods
+  (n=4). That is the kind change working. `rules_suite(bosses)` now expects it with `--boss-effects`, and the
+  check still expects the three Gods alone on the build before (run on `27e5fdee...`: n=3).
+- **Results:**
+  - the whole `gods-3t-fx` suite is 146/146 against `gods-3t` (125 before, plus 21 boss checks), every control
+    comparison as expected; the Duel Computer's tuned deck loads card for card with its two Barrel Dragons;
+  - `gods-3t-fx` is `79361de1...` (`.bps` 77,643 bytes), the same ROM and `.bps` from two fresh work dirs;
+  - `gods`, `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .`
+    pass.

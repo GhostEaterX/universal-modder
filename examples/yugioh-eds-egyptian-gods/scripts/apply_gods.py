@@ -7,7 +7,8 @@
 
 Run it after `tools/dr make setup`, then `tools/dr make`. No game data lives in this script; it only
 names card numbers and rewrites the extracted CSV/JSON files in place:
-  - cards/stats.csv                         the Gods become 4000/4000, level 10 (type stays Divine)
+  - cards/stats.csv                         the Gods become 4000/4000, level 10 (type stays Divine); with
+                                            --text 3, the bosses that get an effect become Effect monsters
   - cards/passwords.csv                     their TCG passwords, so the password screen hands them out
   - tables/rodata2/card_copy_limits.json    ban list: 0 copies -> GOD_COPY_LIMIT
   - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God; with
@@ -16,7 +17,8 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
                                             the summon rules that patch_god_rules.py builds, and Senju of the
                                             Thousand Hands searching a Ritual Magic card
-                                            (patch_extra_deck_rituals.py). Each text is a fixed 480-byte
+                                            (patch_extra_deck_rituals.py) and the bosses' effects
+                                            (patch_boss_effects.py, BOSSES_3T). Each text is a fixed 480-byte
                                             record, so nothing moves
   - text/dialogue.json                      with --text 3: a new last page for the 10th-win lines of the
                                             five duelists that switch to their second deck then
@@ -214,6 +216,8 @@ DECK_TUNING_3T = {
     (O, 21): [   # Duel Computer
         (1068, 1, 0),  # Snatch Steal
         (101, 2, 3),   # Mask of Darkness
+        (113, 3, 1),   # White Magical Hat
+        (742, 0, 2),   # Barrel Dragon, a boss with an effect for a deck that had none
     ],
     (O, 22): [   # Simon
         (1068, 1, 0),  # Snatch Steal
@@ -238,6 +242,29 @@ DIALOGUE_TEXT = 0x300               # text bytes per dialogue record, NUL includ
 SENJU = (1109, "Senju of the Thousand Hands")     # card number, name
 SENJU_TEXT_3T = ("When this card is Normal Summoned or Flip Summoned, you can add 1 Ritual Magic card from your "
                  "Deck to your hand. Then shuffle your Deck.")
+# The three-Tribute effects build also gives the CPU duelists' Normal-monster bosses an effect
+# (patch_boss_effects.py). card ID -> (name, Effect monster, the new text). They become Effect monsters: the kind
+# gives a monster effect spell speed 1 (and the card its orange frame).
+BOSSES_3T = {
+    675: ("Summoned Skull", True,
+          "If this card attacks a Defense Position monster, inflict piercing battle damage to your opponent: the "
+          "amount this card's ATK exceeds that monster's DEF."),
+    471: ("Millennium Golem", True,
+          "This card cannot be destroyed by battle. Its controller still takes any battle damage."),
+    150: ("Dark Magician", True,
+          "Once per turn: you can target 1 Spell or Trap card your opponent controls; destroy that target."),
+    151: ("Dark Magician", True,
+          "Once per turn: you can target 1 Spell or Trap card your opponent controls; destroy that target."),
+    579: ("Red-Eyes B. Dragon", True,
+          "Once per turn: you can target 1 monster your opponent controls; toss a coin. If the result is Heads, "
+          "destroy that target. While this card is equipped with Metalmorph, its activation Tributes it instead, "
+          "to Special Summon 1 Red-Eyes Black Metal Dragon from your Deck."),
+    580: ("Red-Eyes Black Metal Dragon", False,
+          "Special Summoned from your Deck by Tributing a Red-Eyes B. Dragon equipped with Metalmorph. If this "
+          "card attacks a monster, it gains ATK equal to 1/4 of that monster's ATK, during damage calculation "
+          "only."),
+}
+KIND_NORMAL, KIND_EFFECT = "0", "1"
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
 DECK_SWAPS = {
@@ -327,6 +354,17 @@ def main():
         if diff:
             changes.append(f"stats {name}: " + ", ".join(f"{k} {r[k]} -> {v}" for k, v in diff.items()))
             r.update(diff)
+    # The bosses with an effect (three-Tribute effects build only): Effect monsters.
+    if args.text == 3:
+        for card_id, (name, effect, _) in BOSSES_3T.items():
+            r = by_id[card_id]
+            if r["name"] != name:
+                sys.exit(f"stats.csv: ID {card_id} is {r['name']!r}, expected {name!r} (not the USA ROM?)")
+            if effect and r["kind"] != KIND_EFFECT:
+                if r["kind"] != KIND_NORMAL:
+                    sys.exit(f"stats.csv: {name} (ID {card_id}) has kind {r['kind']}, expected a Normal monster")
+                changes.append(f"stats {name} (ID {card_id}): Normal -> Effect monster")
+                r["kind"] = KIND_EFFECT
     if not args.check:
         path.write_text(write_csv_text(rows, list(rows[0])))
 
@@ -418,6 +456,14 @@ def main():
             if data[card_id] != SENJU_TEXT_3T:
                 changes.append(f"text {name}: searches a Ritual Magic card")
                 data[card_id] = SENJU_TEXT_3T
+            for card_id, (name, _, text) in BOSSES_3T.items():
+                if names[card_id] != name:
+                    sys.exit(f"card ID {card_id} is {names[card_id]!r}, expected {name!r} (not the USA ROM?)")
+                if len(text.encode("ascii")) >= TEXT_RECORD:
+                    sys.exit(f"{name}: the text is longer than its {TEXT_RECORD}-byte record")
+                if data[card_id] != text:
+                    changes.append(f"text {name} (ID {card_id}): its effect, {len(text)} characters")
+                    data[card_id] = text
         if not args.check:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 

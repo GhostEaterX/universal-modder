@@ -5,7 +5,7 @@
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
     run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
-                   --second-decks --deck-tuning --extra-deck-rituals [--control gods-3t.gba]
+                   --second-decks --deck-tuning --extra-deck-rituals --boss-effects [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -37,7 +37,13 @@ checks also run on a control ROM, where each check says what must happen there:
     and refuses them the Side Deck, a save from before moves them there at boot (save_migration.lua), the
     Ritual Magic cards summon them from there for both players, a bounced one goes back there, Senju searches
     a Ritual Magic card and Cyber-Stein keeps to Fusion monsters; all of that fails on the control, and the
-    regressions (a ritual from the hand, a Normal monster to the Side Deck, a save without rituals) pass.
+    regressions (a ritual from the hand, a Normal monster to the Side Deck, a save without rituals) pass;
+  - with --boss-effects, the same control for the bosses' effects: Summoned Skull's piercing damage, Millennium
+    Golem surviving battle, Dark Magician's once-per-turn Spell/Trap destruction and Red-Eyes B. Dragon's coin
+    (heads and tails, with a pinned RNG state), each for the player and the CPU, and Red-Eyes Black Metal
+    Dragon's quarter bonus; all of that fails on the control, and the regressions (Raigeki on Golem, the
+    Metalmorph upgrade, B. Skull Dragon's fusion, Black Metal Dragon attacked) pass. It also makes the rules
+    suite's Effect Monsters filter expect the Trunk's Dark Magician, an Effect monster now.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -240,7 +246,9 @@ RULES_TEXT = (b"Cannot be Special Summoned.", b"If this card is Special Summoned
               b"during the End Phase.")
 
 
-def rules_suite():
+def rules_suite(bosses=False):
+    """bosses: the ROM has the bosses' effects, so the Trunk's Dark Magician is an Effect monster too."""
+    effect_monsters = "n=4 ids=150,817,818,819" if bosses else "n=3 ids=817,818,819"
     gone = lambda god: (rf"P {god},0,0,0,0 [^\n]*\n[\s\S]*"
                         r"P 0,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 5 5 grave 2 0")
     return [
@@ -264,7 +272,7 @@ def rules_suite():
         check("Deck Edit: ATK sort puts the Gods first", DE, "main_menu", 700, FILTER_KEYS + "; 480 A; 520 DOWN; 560 A",
               TRUNK, r"trunk n=7 ids=817,818,819,82,150,1,482"),
         check("Deck Edit: Effect Monsters lists Obelisk", DE, "main_menu", 700, FILTER_KEYS + "; 440 DOWN; 460 DOWN; "
-              "480 A; 560 A", TRUNK, r"trunk n=3 ids=817,818,819"),
+              "480 A; 560 A", TRUNK, rf"trunk {effect_monsters}"),
         check("Card Detail: Found in, from Deck Edit", DE, "main_menu", 500, "0 DOWN; 15 DOWN; 30 A; 200 A; 240 A",
               {"TRUNK": "1,82"}, r"detail id=1 found=[1-9]"),
         check("Card Detail: no Found in inside a duel", E, "duel_main1", 400, "15 A; 60 A", {"P_HAND": SIX("82")},
@@ -438,6 +446,71 @@ def extra_deck_rituals_suite():
     ]
 
 
+# The bosses' effects. Zone 0's menu, Activate (the third command), A through the prompt; then the target:
+ACTIVATE_KEYS = "20 UP; 40 UP; 70 A; 120 RIGHT; 180 RIGHT; 240 A; 450 A"
+DARK_MAGICIAN_KEYS = ACTIVATE_KEYS + "; 600 A"              # the CPU's Spell/Trap card the cursor starts on
+# after it resolves, back down to zone 0 (the cursor stays on the CPU's side), its menu, the same commands
+DARK_MAGICIAN_TWICE_KEYS = DARK_MAGICIAN_KEYS + ("; 1250 DOWN; 1300 DOWN; 1350 LEFT; 1380 LEFT; 1410 LEFT; 1440 LEFT; "
+                                                 "1500 A; 1550 RIGHT; 1600 RIGHT; 1650 A; 1850 A; 2000 A")
+RED_EYES_KEYS = ACTIVATE_KEYS + "; 500 UP; 540 A"           # the CPU's zone 0
+# the set Metalmorph in zone 5: Activate, on Red-Eyes; then Red-Eyes' Activate, Attack Position
+METALMORPH_UPGRADE_KEYS = ("20 UP; 50 A; 80 RIGHT; 100 A; 350 A; 450 A; 1100 A; 1150 RIGHT; 1200 RIGHT; 1250 A; "
+                           "1500 A")
+QUIET_CPU = {"C_HAND": "82,82,82,82,82", "C_DECK": "82"}     # Blue-Eyes it can't summon: no Normal Summon
+HEADS, TAILS = {"PIN_RNG": "1234ABCD"}, {"PIN_RNG": "00000002"}     # the player's coin from these RNG states
+CPU_TAILS = {"PIN_RNG": "00000001"}                                 # the CPU's coin (its turn draws first)
+
+
+def boss_effects_suite():
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from apply_gods import BOSSES_3T
+    texts = {text: name for name, _, text in BOSSES_3T.values()}
+    set_cards = "5:737:s,6:476:s"                            # Trap Hole, Mirror Force
+    return [
+        check("bosses: Summoned Skull pierces", E, "duel_turn2", 1800, BATTLE_KEYS,
+              {"P_ZONES": "0:675", "C_ZONES": "0:1:d"}, r"P 675,0,0,0,0 C 0,0,0,0,0 LP 7900 6300"),
+        check("bosses: the CPU's Summoned Skull pierces", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:675", P_ZONES="0:1:d"), r"P 0,0,0,0,0 C 675,0,0,0,0 LP 6300 8000"),
+        check("bosses: Millennium Golem survives Blue-Eyes", E, "duel_turn2", 1800, BATTLE_KEYS,
+              {"P_ZONES": "0:82", "C_ZONES": "0:471"}, r"P 82,0,0,0,0 C 471,0,0,0,0 LP 7900 7000"),
+        check("bosses: ... and the CPU's Blue-Eyes", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:82", P_ZONES="0:471"), r"P 471,0,0,0,0 C 82,0,0,0,0 LP 7000 8000"),
+        check("bosses: Raigeki still destroys Golem", E, "duel_main1", 1500, RITUAL_KEYS,
+              {"P_HAND": SIX("570"), "C_ZONES": "0:471"}, r"C 0,0,0,0,0 LP 8000 8000 hand 5 5 grave 1 1",
+              control="passes"),
+        check("bosses: Dark Magician destroys a set card", E, "duel_main1", 1600, DARK_MAGICIAN_KEYS,
+              {"P_ZONES": "0:150:e", "C_ZONES": set_cards}, r"P 150,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1"),
+        check("bosses: Dark Magician once per turn", E, "duel_main1", 2500, DARK_MAGICIAN_TWICE_KEYS,
+              {"P_ZONES": "0:150:e", "C_ZONES": set_cards}, r"grave 0 1 [\s\S]*detail id=150",
+              verify=lambda log: "grave 0 2" not in log),
+        check("bosses: the CPU's Dark Magician, ready again", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:150:u", P_ZONES="5:737:s"),
+              r"P 0,0,0,0,0 C 150,0,0,0,0 LP 5500 8000 hand 6 6 grave 1 0"),
+        check("bosses: Red-Eyes, heads destroys", E, "duel_main1", 2200, RED_EYES_KEYS,
+              dict(HEADS, P_ZONES="0:579:e", C_ZONES="0:82"),
+              r"coin heads\n.*P 579,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1"),
+        check("bosses: Red-Eyes, tails doesn't", E, "duel_main1", 2200, RED_EYES_KEYS,
+              dict(TAILS, P_ZONES="0:579:e", C_ZONES="0:82"), r"C 82,0,0,0,0 .*\n.*coin tails$"),
+        check("bosses: the CPU's Red-Eyes, heads", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, **HEADS, C_ZONES="0:579:u", P_ZONES="0:82"),
+              r"coin heads\n[\s\S]*P 0,0,0,0,0 C 579,0,0,0,0 LP 5600 8000"),
+        check("bosses: the CPU's Red-Eyes, tails", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, **CPU_TAILS, C_ZONES="0:579:u", P_ZONES="0:82"), r"P 82,0,0,0,0 C 579,.*\n.*coin tails$"),
+        check("bosses: Metalmorph still upgrades Red-Eyes", E, "duel_main1", 2000, METALMORPH_UPGRADE_KEYS,
+              {"P_ZONES": "0:579:e,5:466:sa", "P_DECK": "580"}, r"P 580,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 2 0",
+              control="passes", verify=lambda log: "coin" not in log),
+        check("bosses: Black Metal Dragon + 1/4 beats Blue-Eyes", E, "duel_turn2", 1800, BATTLE_KEYS,
+              {"P_ZONES": "0:580", "C_ZONES": "0:82"}, r"P 580,0,0,0,0 C 0,0,0,0,0 LP 7900 7450"),
+        check("bosses: ... but not when it's attacked", E, "duel_main1", 4000, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:82", P_ZONES="0:580"), r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7800 8000",
+              control="passes"),
+        check("bosses: the CPU still fuses B. Skull Dragon", E, "duel_main1", 4000, END_TURN_KEYS,
+              {"C_HAND": "552,675,579,82,82", "C_FUSION": "42", "P_HAND": "1,1,1,1,1"}, r"C 42,0,0,0,0",
+              control="passes"),
+    ] + [check(f"bosses: {name}'s card text", None, None, 0, None, {}, text.encode("ascii"))
+         for text, name in texts.items()]
+
+
 def no_set(keys):
     """A God's hand menu in an effects build: Card View, Summon (no Set), so Summon is one RIGHT away."""
     return keys.replace("45 RIGHT; 55 RIGHT; 70 A", "45 RIGHT; 70 A")
@@ -553,6 +626,7 @@ def main():
     ap.add_argument("--deck-tuning", action="store_true", help="the ROM has the CPU deck tuning (gods-3t-fx)")
     ap.add_argument("--extra-deck-rituals", action="store_true",
                     help="the ROM has the Ritual monsters in the Extra Deck (gods-3t-fx)")
+    ap.add_argument("--boss-effects", action="store_true", help="the ROM has the bosses' effects (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -564,7 +638,7 @@ def main():
         checks = checks + pv_suite()
         tag += "pv"
     if args.god_rules:
-        checks = checks + rules_suite()
+        checks = checks + rules_suite(args.boss_effects)
         tag += "gr"
     rituals = args.extra_deck_rituals
     if args.second_decks:
@@ -576,6 +650,9 @@ def main():
     if rituals:
         checks = checks + extra_deck_rituals_suite()
         tag += "edr"
+    if args.boss_effects:
+        checks = checks + boss_effects_suite()
+        tag += "boss"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

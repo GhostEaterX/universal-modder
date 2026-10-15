@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Check the relocated effect table of an effects build (patch_god_effects.py), after hookbuild.py.
 
-    check_effect_table.py VANILLA OUT.gba [--work OUT.hookbuild]
+    check_effect_table.py VANILLA OUT.gba [--work OUT.hookbuild] [--boss-rows]
 
 Every card's effect goes through this table, so the build stops unless:
   - the first 426 rows of gCardEffectsMod equal the original table at gCardEffects, byte for byte;
   - the rows after them are the Gods' (1910, 1912), the numbers stay sorted for FindCardEffect, and every
     handler pointer is 0 or a Thumb address;
+  - with --boss-rows (gods-3t-fx, patch_boss_effects.py), the bosses' rows (34, 2034, 81) come last, out of
+    order: FindCardEffect finds them with a linear search once the binary search fails, so their numbers
+    must not be in the sorted rows;
   - every original function that reads gCardEffects (or its alias gAlias_0819A9D4) is hooked, so none of
     them still reads the old table.
 Needs pyelftools (eds-decomp's tools/setup_native.sh installs it).
@@ -24,6 +27,7 @@ ROM_BASE = 0x08000000
 ROW = 0x18
 ORIGINAL_ROWS = 426
 GOD_ROWS = (1910, 1912)
+BOSS_ROWS = (34, 2034, 81)
 TABLE_NAMES = {"gCardEffects", "gAlias_0819A9D4"}
 
 
@@ -59,6 +63,7 @@ def main():
     ap.add_argument("vanilla", type=Path)
     ap.add_argument("rom", type=Path)
     ap.add_argument("--work", type=Path, help="hookbuild.py's scratch directory (default: ROM.hookbuild/)")
+    ap.add_argument("--boss-rows", action="store_true", help="the bosses' rows follow the Gods' (gods-3t-fx)")
     args = ap.parse_args()
     work = args.work or args.rom.with_suffix(".hookbuild")
     rom = args.rom.read_bytes()
@@ -66,7 +71,9 @@ def main():
 
     old = symbol(args.vanilla / "build" / "eds.elf", "gCardEffects") - ROM_BASE
     new = symbol(work / "blob.elf", "gCardEffectsMod") - ROM_BASE
-    rows = ORIGINAL_ROWS + len(GOD_ROWS)
+    boss = BOSS_ROWS if args.boss_rows else ()
+    sorted_rows = ORIGINAL_ROWS + len(GOD_ROWS)
+    rows = sorted_rows + len(boss)
     if rom[new:new + ORIGINAL_ROWS * ROW] != rom[old:old + ORIGINAL_ROWS * ROW]:
         errors.append("the first 426 rows of gCardEffectsMod differ from gCardEffects")
     numbers = []
@@ -78,10 +85,13 @@ def main():
         for h in handlers:
             if h and (not h & 1 or not ROM_BASE <= h < ROM_BASE + len(rom)):
                 errors.append(f"row {i} (card {number}): handler 0x{h:08X} is not a Thumb address in the ROM")
-    if tuple(numbers[ORIGINAL_ROWS:]) != GOD_ROWS:
-        errors.append(f"the added rows are {numbers[ORIGINAL_ROWS:]}, expected {list(GOD_ROWS)}")
-    if numbers != sorted(numbers) or len(set(numbers)) != rows:
+    if tuple(numbers[ORIGINAL_ROWS:]) != GOD_ROWS + boss:
+        errors.append(f"the added rows are {numbers[ORIGINAL_ROWS:]}, expected {list(GOD_ROWS + boss)}")
+    head = numbers[:sorted_rows]
+    if head != sorted(head) or len(set(head)) != sorted_rows:
         errors.append("the rows are not sorted by card number")
+    for number in set(boss) & set(head):
+        errors.append(f"card {number} has a row in the sorted part too, so its boss row is never found")
 
     hooks = set()
     for line in (work / "hooks.tsv").read_text().splitlines()[1:]:

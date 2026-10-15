@@ -756,5 +756,105 @@
       "patch": "gods-3t-fx.bps (27e5fdee...)",
       "result": "works"
     }
+  },
+  "boss_effects": {
+    "decisions": "the user approved the effects: Summoned Skull pierces; Millennium Golem can't be destroyed by battle (the damage stays); Dark Magician destroys 1 Spell/Trap card the opponent controls once per turn; Red-Eyes B. Dragon tosses a coin once per turn and on heads destroys 1 monster the opponent controls; Red-Eyes Black Metal Dragon gets a weaker Metalmorph (+1/4 of the attacked monster's ATK, damage calculation only); the Duel Computer trades 2 of its 3 White Magical Hats for 2 Barrel Dragons. Design rules: none of them protected from removal, the effects keep paying on the field, the CPU uses them. Only in gods-3t-fx (patch_boss_effects.py, src/boss_effects.c)",
+    "design": {
+      "passive": "CalcBattle: BossPierces sets piercing, BossBattleIndestructible clears destroyed on either side, BossAttackBonus adds (ATK + 3) / 4 of the defender to the attacker's battle value after Metalmorph's",
+      "activated": "three rows appended to gCardEffectsMod after the Gods' (34, 2034, 81), shaped like Barrel Dragon's: once-per-turn prepare, an opponent check, a pick (Dust Tornado's prompt for the human, a set card first for the CPU; Barrel Dragon's prompt and pick for Red-Eyes); FindCardEffect falls back to BossFindCardEffect; the turn start resets effectUnused; the CPU activates them after the Gods",
+      "red_eyes_fork": "with a Metalmorph equipped, Activate stays the original upgrade to Red-Eyes Black Metal Dragon; without, the menu asks the effect row and the dispatch adds the chain link (step 0 only)",
+      "data": "apply_gods.py --text 3, BOSSES_3T: Summoned Skull, Millennium Golem, both Dark Magicians and Red-Eyes B. Dragon from kind Normal to Effect (spell speed for the monster effect, orange frame); new text for all six; the Duel Computer's swap in DECK_TUNING_3T (65 cards in 26 decks)",
+      "table_check": "check_effect_table.py --boss-rows: 431 rows, the 428 sorted ones unchanged, the boss rows' handlers Thumb addresses and their numbers absent from the sorted part"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "79361de1f81f7b94358b914559f172fe515ceed5",
+      "patch_bytes": 77643,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "hooks": "108 changed functions (106 before), 7 new units"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --boss-effects --control gods-3t.gba",
+    "suite_result": "146/146 against gods-3t: the 125 checks before plus 21 boss checks (16 played, 5 card texts); the rules suite's Effect Monsters filter now expects the Trunk's Dark Magician too (n=4), and still n=3 on 27e5fdee; every control comparison as expected (17 not compared). The first full run was 145/146: that filter check, before its expectation was updated",
+    "oracles": [
+      {
+        "check": "Summoned Skull attacks a 7 Colored Fish in Defense Position: 1700 damage (CPU LP 6300); the same for the CPU's Skull",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Millennium Golem attacked by Blue-Eyes survives, its controller takes 1000; the player's and the CPU's",
+        "boss_build": "pass (2 checks)",
+        "control": "fails (destroyed)"
+      },
+      {
+        "check": "Raigeki destroys Millennium Golem",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Dark Magician destroys one of the CPU's set cards",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Dark Magician once per turn: back on its menu after the first use, the same keys open Card View, and only one card is destroyed",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "the CPU's Dark Magician, marked used at the end of the player's turn, is ready on the CPU's turn, destroys the player's set Trap Hole and attacks for 2500",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Red-Eyes: heads (RNG 1234ABCD) destroys the CPU's Blue-Eyes; tails (00000002) leaves it",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "the CPU's Red-Eyes: heads destroys the player's Blue-Eyes and attacks for 2400; tails (00000001), no attack",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Red-Eyes with Metalmorph equipped: Activate Tributes it for Red-Eyes Black Metal Dragon from the Deck, no coin",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Red-Eyes Black Metal Dragon attacks Blue-Eyes: 2800 + 750 wins, 550 damage",
+        "boss_build": "pass",
+        "control": "fails (it loses)"
+      },
+      {
+        "check": "the CPU's Blue-Eyes attacks Red-Eyes Black Metal Dragon: no bonus, 200 damage",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Polymerization for B. Skull Dragon",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the five new card texts are in the ROM",
+        "boss_build": "pass (5 checks)",
+        "control": "fails"
+      }
+    ],
+    "extra_checks": [
+      "the Metalmorph regression found a bug in the first build (97a6e743...): the upgrade's second dispatch step saw an empty zone without a Metalmorph and tossed the coin too, and Red-Eyes Black Metal Dragon never came; fixed by taking the coin path at step 0 only",
+      "screenshots: Dark Magician's prompt, pick, chain and the destroyed Trap Hole; the coin scene for the player and the CPU; Barrel Dragon's prompt for Red-Eyes; a used Dark Magician's two-command menu; Card View of Summoned Skull, old build vs new (yellow Normal frame and [Fiend] vs orange frame, [Fiend/Effect] and the new text)",
+      "the effects.lua coin log reads gDuelScene (0x02017A30): scene 0, arg bits 8-14 the coin count, bit i coin i",
+      "played once outside the suite: Dark Magician's alternate art (ID 151, card 2034) destroys one of the CPU's set cards with the same keys"
+    ],
+    "not_verified": [
+      "a real device",
+      "a full played duel against a boss deck",
+      "the Duel Computer's Barrel Dragons in a duel (its deck loads card for card in the tuning suite; Barrel Dragon's CPU rule is the original game's)",
+      "a Link Battle"
+    ]
   }
 }
