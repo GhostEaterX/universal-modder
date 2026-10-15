@@ -78,6 +78,34 @@ can own but never use. This mod makes them real monsters, for you and for the CP
     duelist has a boss too.
   - None of them is protected: Trap Hole, Dark Hole, Raigeki, Hane-Hane, Penguin Soldier and Change of Heart
     work on them as before. The first four are Effect monsters now, with the orange frame.
+- **Fusion and Ritual effects (`gods-3t-fx.bps`):** the Level 7+ Fusion and Ritual monsters (and
+  Dokurorider) cost several cards to summon and mostly had no effect, so each one that fell short gets one. Each
+  effect is one the game already runs for another card, so you and the CPU both use it, and the card text says
+  so (it still names the Fusion Material Monsters or the Ritual Magic card first):
+
+  | Card | Effect | Borrowed from |
+  |---|---|---|
+  | B. Skull Dragon, Black Luster Soldier, Javelin Beetle | piercing battle damage | Summoned Skull (above) |
+  | Labyrinth Tank, Crab Turtle, Fortress Whale | can't be destroyed by battle; the damage stays | Millennium Golem (above) |
+  | Twin-Headed Thunder Dragon | +300 ATK during your Battle Phase | an engine rule no EDS card used |
+  | Skull Knight, Zera The Mant, Dokurorider | +100 ATK for each monster in your Graveyard | Shadow Ghoul |
+  | Chakra | +100 ATK for each monster in both Graveyards | Shadow Ghoul |
+  | Kaiser Dragon | +1000 ATK while it battles a DARK monster | Insect Soldiers of the Sky (WIND) |
+  | Garma Sword | a LIGHT monster it battles is destroyed | Mechanical Spider (DARK) |
+  | Magician of Black Chaos | once per turn, destroy 1 Spell or Trap card your opponent controls | Dark Magician (above) |
+  | Thousand Dragon | once per turn, call a coin toss: right doubles its ATK this turn, wrong halves it | Goddess of Whim |
+  | Bickuribox | when it is changed to Defense Position, destroy 1 monster your opponent controls | Dream Clown |
+  | Skull Guardian | once per turn, when it is attacked face up: make the attacker's ATK 0 for that battle | Suijin |
+  | Gaia the Dragon Champion, Super War-Lion | once per turn, in Main Phase 1: destroy 1 face-up monster your opponent controls with less ATK; it can't attack that turn | Barrel Dragon's activation, Obelisk's lock |
+
+  Each effect had to pass five rules: it makes the summon worth its cards, keeps paying while the monster
+  stays, can still be answered (none of them protects against Trap Hole, Raigeki or the like), works for the
+  CPU, and is sized to the gap between the card's ATK and what its three cards should buy: 3000 ATK, as a
+  Blue-Eyes with two Tributes; 3300 for a Ritual monster, whose Ritual Magic card is useless alone; 3500 for a
+  Fusion whose two materials both have 2000 ATK or more. The widest gaps, Gaia, Super War-Lion and Skull
+  Guardian, get the strongest effects. An effect is also no bigger than the duelist who
+  plays the card can carry: Mako's Fortress Whale and Bakura's Dokurorider got smaller ones. Blue-Eyes Ultimate Dragon and Meteor B. Dragon stay as they are. Their kind stays Fusion or
+  Ritual, so they stay in the Extra Deck.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -164,10 +192,12 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `eabd901ffabcc1f0ae52cf68cca9e3890afd63ad`, with the summon rules, the pack
+- `gods-3t-fx.gba`: SHA-1 `32a5568d91a4142943bea7b71695df1083c281de`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization),
-  the Ritual monsters in the Extra Deck and the bosses' effects (with the CPU's Metalmorph); the user ran it in
-  Delta. Earlier versions:
+  the Ritual monsters in the Extra Deck, the bosses' effects (with the CPU's Metalmorph) and the Fusion and
+  Ritual effects; not yet run on a real device. Earlier versions:
+  - `eabd901ffabcc1f0ae52cf68cca9e3890afd63ad`: before the Fusion and Ritual effects; the user ran it in
+    Delta;
   - `79361de1f81f7b94358b914559f172fe515ceed5`: before the CPU's Metalmorph (Joey's second deck traded it for
     Skull Dice); the user ran it in Delta;
   - `27e5fdeeb39f652fc4c15f2103f57695e467a827`: before the bosses' effects; the user ran it in Delta;
@@ -465,6 +495,63 @@ mod can't keep new state in RAM (`hookbuild.py` refuses data sections), so the C
 steps in one call. It doesn't plan around the passive effects: it attacks into Millennium Golem or keeps
 Summoned Skull back as it did before.
 
+### How the Fusion and Ritual effects work (gods-3t-fx)
+Every effect reuses a rule the engine already runs for another card, so the CPU's own code plays most of them.
+`scripts/patch_extra_deck_effects.py` runs after the boss patch, copies `src/extra_deck_effects.c` into the
+decomp as a new unit and makes 18 anchored edits in 11 files.
+
+```
+ ALWAYS ON
+   CalcBattle (campaign.c)          piercing ......... B. Skull Dragon, Black Luster Soldier, Javelin Beetle
+                                    destroyed = 0 .... Labyrinth Tank, Crab Turtle, Fortress Whale
+                                    +1000 vs DARK .... Kaiser Dragon (attacking or attacked)
+                                    LIGHT foe dies ... Garma Sword (attacking or attacked)
+   GetZoneCardStats (card_stats.c)  key 1516's case .. Twin-Headed Thunder Dragon (+300 in its Battle Phase)
+                                    Shadow Ghoul's ... Skull Knight, Zera The Mant, Dokurorider
+                                    both Graveyards .. Chakra
+
+ ACTIVATED (monster menu for you, AiActivateMonsterEffects for the CPU), once per turn
+   row 721  Magician of Black Chaos ── Dark Magician's row (boss_effects.c)
+   row 68, 2068  Thousand Dragon ───── Goddess of Whim's resolve ─► coin link ─► ATK ×2 or ½ (card_stats.c)
+                                                                      └─ removed at the end of the turn
+   row 36, 355  Gaia, Super War-Lion ─ Main Phase 1 only ─► pick a face-up foe with less ATK ─► destroy it
+                                                          ─► DUEL_CMD_SET_CANNOT_ATTACK (Obelisk's lock)
+
+ TRIGGERS
+   ChangeBattlePosition, Attack ─► Defense ─► row 384 Bickuribox = Dream Clown's row ─► destroy 1 monster
+   damage step, attacked face up ─► Skull Guardian in Suijin's case ─► "ATK to 0?" ─► the attacker hits for 0
+```
+
+| Where | What the edits do |
+|---|---|
+| `CalcBattle` (campaign.c) | Kaiser Dragon's boost beside Insect Soldiers'; `ExtraDeckPierces` after the boss check; Garma Sword's rule and `ExtraDeckBattleIndestructible` beside Millennium Golem's |
+| `GetZoneCardStats` (card_stats.c) | Thousand Dragon's coin link in Goddess of Whim's case; Twin-Headed Thunder Dragon in key 1516's; Skull Knight, Zera and Dokurorider in Shadow Ghoul's; Chakra's own case over both Graveyards |
+| the effect table | six rows after the bosses': Magician of Black Chaos, Gaia, Super War-Lion, Thousand Dragon (both arts), Bickuribox |
+| `FindCardEffect` | `ExtraDeckFindCardEffect` looks through the boss rows, then these |
+| `CanActivateMonsterEffect` | offers Activate for Magician of Black Chaos, Gaia, Super War-Lion and Thousand Dragon |
+| the turn start and end (`duel_cmd_turn.c`) | their once-per-turn flag (and Skull Guardian's) comes back at the start of their controller's turn; Thousand Dragon's coin link ends with the turn, as Goddess of Whim's does through `gEndOfTurnEffectCards` |
+| `ChangeBattlePosition`, `EffectOpponentMonsterChainB` | Bickuribox in Dream Clown's trigger case and its "destroy" prompt |
+| `BattleStage_DamageCalc`, `DuelLink_RunCardPrompt` | Skull Guardian in Suijin's case, and in the link partner's question about it |
+| `AiActivateMonsterEffects` | after the bosses, the CPU's effects (below) |
+
+**Gaia the Dragon Champion and Super War-Lion** are the only new rule. The check takes a face-up monster of the
+opponent with less ATK than the activating monster, so a set monster is never a target and the prompt gives
+nothing away. The effect only works in Main Phase 1, so the monster can't attack first and destroy after. The
+resolve is Dream Clown's destroy, then Obelisk's cannot-attack flag, which the next turn's start clears.
+
+**The data** (`apply_gods.py --text 3`, `EXTRA_DECK_3T`): 20 card texts (Thousand Dragon has two arts), each
+naming the Fusion Material Monsters or the Ritual Magic card and its Levels first. The kind stays Fusion or
+Ritual: it files the card in the Extra Deck. That kind gives an effect no spell speed, which only matters when
+the effect would answer a chain link: none of these does.
+
+**The CPU** activates Magician of Black Chaos whenever it finds a target. It tosses Thousand Dragon's coin
+whenever its Thousand Dragon is in Attack Position (Goddess of Whim's resolve calls at random for it).
+It uses Gaia's or Super War-Lion's effect when the target is in Defense Position or the human controls two or
+more monsters; with one Attack Position target it attacks instead, which also deals damage. The original AI
+never moves a monster from Attack to Defense Position, so a Dream Clown never triggers for it; a Bickuribox now
+goes to Defense when the human controls a face-up monster with at least its ATK. Skull Guardian's question is
+Suijin's: the CPU always says yes.
+
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
 the decomp as a new unit, writes its odds table from your ROM's pack lists, and makes 8 anchored edits in 5
@@ -731,6 +818,33 @@ the coin scene for both players, and the new card text in Card View ("[Spellcast
 Played once outside the suite: Dark Magician's alternate art (card 2034) destroys a set card the same way.
 On a real device, the user tested this build in Delta on iOS: it works.
 
+The Fusion and Ritual effects have their own suite, `--extra-deck-effects` (same control): 48 played checks
+and the 20 card texts. The battle checks attack from eds-decomp's `duel_turn2` state; the CPU's play from
+`duel_main1`, with the Blue-Eyes hand above. Numbers are 7 Colored Fish (1800/800), Blue-Eyes White Dragon
+(3000, LIGHT) and Dark Magician (2500, DARK).
+
+| Check (`gods-3t-fx.gba`) | Effects build | Build without it |
+|---|---|---|
+| B. Skull Dragon, Black Luster Soldier and Javelin Beetle pierce a Defense Position 7 Colored Fish (2400, 2200, 1650 damage); the CPU's B. Skull Dragon too | pass | fails (no damage) |
+| Labyrinth Tank, Crab Turtle and Fortress Whale survive attacking Blue-Eyes (their player takes the damage); Fortress Whale survives the CPU's Blue-Eyes too | pass | fails (destroyed) |
+| Twin-Headed Thunder Dragon at 3100 in its Battle Phase beats Blue-Eyes; in the CPU's it is 2800 and loses | pass | fails; passes |
+| Skull Knight with 4 monsters in its Graveyard beats Blue-Eyes, with 3 it loses by 50; the CPU's counts its own Graveyard | pass | fails |
+| Zera The Mant (3 monsters) and Dokurorider (12) beat Blue-Eyes | pass | fails |
+| Chakra with 3 monsters in each Graveyard beats Blue-Eyes; with its own 3 only it loses by 250 | pass | fails |
+| Kaiser Dragon beats Dark Magician (3300), attacking or attacked; against Blue-Eyes it has no bonus | pass | fails; passes |
+| Garma Sword destroys Blue-Eyes along with itself, attacking or attacked | pass | fails |
+| Magician of Black Chaos destroys a set card; the CPU's destroys your set Trap Hole and attacks for 2800 | pass | fails |
+| Thousand Dragon: a right call links ×2, a wrong one ½, the alternate art the same; the link is gone at the end of the turn | pass | fails |
+| The CPU's Thousand Dragon: right, it attacks Blue-Eyes for 1800; wrong, it doesn't attack | pass | fails |
+| Bickuribox changed to Defense Position destroys Blue-Eyes; the CPU's Bickuribox switches itself and destroys your Blue-Eyes | pass | fails |
+| The CPU's Bickuribox attacks a weaker monster instead | pass | pass |
+| Skull Guardian, attacked by the CPU's Blue-Eyes: Yes makes it 0 ATK, the Blue-Eyes is destroyed and the CPU takes 2050; a second Blue-Eyes the same turn gets no question; Ritual Summoned with Novox's Prayer it is ready at once | pass | fails |
+| Gaia destroys Dark Magician and gets the cannot-attack flag; refuses Blue-Eyes as a pick and takes Dark Magician next to it; Super War-Lion destroys a 7 Colored Fish | pass | fails |
+| Gaia has no Activate against only a stronger monster, a set one, or once its effect is used | pass | pass |
+| The CPU's Gaia destroys a Defense Position monster, or one of two, and doesn't attack; against one Attack Position monster it attacks it | pass | fails; passes |
+| Regressions: Dream Clown destroys, Suijin zeroes, Goddess of Whim's coin links, Mechanical Spider takes Dark Magician | pass | pass |
+| The 20 new card texts are in the ROM | pass | fails |
+
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the
 10th-win lines) in Delta on iOS: it works. Not yet checked in the emulator: reaching 10 wins by playing (the
@@ -750,8 +864,8 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
-- **The summon rules, the pack viewer, Found in, the second decks, the deck tuning, the Extra Deck rituals
-  and the bosses' effects are only in `gods-3t-fx`.** The pack list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
+- **The summon rules, the pack viewer, Found in, the second decks, the deck tuning, the Extra Deck rituals,
+  the bosses' effects and the Fusion and Ritual effects are only in `gods-3t-fx`.** The pack list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
   those pick-screen packs, so a card that comes only from an event, a trade or a password says it isn't in
   them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
@@ -786,6 +900,19 @@ Also checked:
   Activate at all.
 - **The bosses are Effect monsters now:** Deck Edit's Normal Monsters filter no longer lists Summoned Skull,
   Millennium Golem, Dark Magician or Red-Eyes B. Dragon, and their frames are orange.
+- **The Fusion and Ritual effects and the CPU:**
+  - few CPU decks hold these cards: Joey's Thousand Dragon, his second deck's B. Skull Dragon, Mako's
+    Fortress Whale and Bakura's Dokurorider (and Kaiba's Blue-Eyes Ultimate Dragons, unchanged). The rest only
+    make your decks stronger. Giving the CPU some of them is a separate decision, not made yet;
+  - it tosses Thousand Dragon's coin whenever its Thousand Dragon is in Attack Position, so half the time it
+    halves its own ATK for the turn;
+  - it moves a Bickuribox to Defense Position only when you have a face-up monster at least as strong, and
+    never moves a Dream Clown (the original AI doesn't);
+  - it doesn't plan around the passive effects, as with the bosses'.
+- **Gaia the Dragon Champion and Super War-Lion** take only a face-up monster with less ATK, and only in Main
+  Phase 1, a little narrower than "a monster with lower ATK": a set monster can't be checked without showing it.
+- **Skull Guardian's answer comes back at the start of its controller's turn,** so it answers one attack per
+  opponent's turn; Suijin, Sanga and Kazejin keep the original rule (once while face up).
 - **The 10th-win line comes once:** it is shown when your record against the duelist goes from 9 to 10. A
   save that is already past 10 wins gets the second deck without the line. A record only grows, so once a
   duelist has 10 wins they keep the second deck.

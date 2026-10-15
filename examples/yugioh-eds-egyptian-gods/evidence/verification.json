@@ -926,5 +926,38 @@
       "patch": "gods-3t-fx.bps (eabd901f...)",
       "result": "works"
     }
+  },
+  "extra_deck_effects": {
+    "decisions": "the user asked to apply the bosses' five rules to the Fusion and Ritual monsters, approved the 19 proposed effects for the Level 7+ ones and Dokurorider, and kept the three large ones (Gaia, Super War-Lion, Skull Guardian); giving CPU decks some of these cards is still open. Only in gods-3t-fx (patch_extra_deck_effects.py, src/extra_deck_effects.c)",
+    "design": {
+      "bar": "3000 ATK for three cards (a Blue-Eyes with two Tributes), +300 for a Ritual monster, +500 for a Fusion of two 2000+ ATK materials; the gap sets the effect's size, capped by the tier of a CPU duelist who plays the card",
+      "passive": "CalcBattle: ExtraDeckPierces (B. Skull Dragon, Black Luster Soldier, Javelin Beetle), ExtraDeckBattleIndestructible (Labyrinth Tank, Crab Turtle, Fortress Whale), Kaiser Dragon's +1000 against DARK for either side, Garma Sword destroys a LIGHT monster it battles; GetZoneCardStats: Twin-Headed Thunder Dragon in key 1516's case, Skull Knight / Zera The Mant / Dokurorider in Shadow Ghoul's, Chakra over both Graveyards",
+      "activated": "six rows after the bosses' (721, 36, 355, 68, 2068, 384): Magician of Black Chaos takes Dark Magician's handlers; Thousand Dragon Goddess of Whim's resolve with the once-per-turn prepare (its coin link doubles or halves ATK in card_stats.c and ends with the turn); Gaia and Super War-Lion a new check (a face-up foe with less ATK), Main Phase 1 only, Dream Clown's destroy, then DUEL_CMD_SET_CANNOT_ATTACK; FindCardEffect falls back to ExtraDeckFindCardEffect",
+      "triggers": "Bickuribox in ChangeBattlePosition's Dream Clown case (its row is Dream Clown's), Skull Guardian in the damage step's Suijin case and the link duel's question, reset each turn",
+      "cpu": "after the bosses: Magician of Black Chaos whenever it finds a target; Thousand Dragon in Attack Position; Gaia / Super War-Lion when the target is in Defense Position or the human has two or more monsters; a face-up Attack Position Bickuribox goes to Defense Position when the human has a face-up monster at least as strong (the original AI never moves a monster down)",
+      "data": "apply_gods.py --text 3, EXTRA_DECK_3T: 20 texts (Thousand Dragon has two arts), the materials or Ritual Magic card first; kinds unchanged (the Extra Deck)",
+      "table_check": "check_effect_table.py --boss-rows --extra-deck-rows: 437 rows, the 428 sorted ones unchanged"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "32a5568d91a4142943bea7b71695df1083c281de",
+      "patch_bytes": 82537,
+      "patch_sha1": "66e707b0ca93e97a242db7b9fc1a8940003d9c54",
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs (the second cloned eds-decomp from GitHub)",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "fb19af44... had no CPU switch for Bickuribox"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --boss-effects --extra-deck-effects --control gods-3t.gba",
+    "suite_result": "219/219 against gods-3t: the 151 checks before plus 68 Extra Deck effect checks (48 played, 20 card texts); every control comparison as expected (17 not compared). The first full run was 218/219: the Extra Deck rituals' bounce check still expected no damage from Black Luster Soldier",
+    "oracles": "68 checks (48 played, 20 card texts), listed in the README's verification table; each effect check fails on gods-3t, the regressions (Dream Clown, Suijin, Goddess of Whim, Mechanical Spider, Kaiser against LIGHT, Twin-Headed Thunder Dragon on the CPU's turn, Gaia's refusals, the CPU attacking instead) pass there",
+    "check_changes": [
+      "the Goddess of Whim regression accepts either side of the coin: the pinned RNG state lands tails on the control build",
+      "the Extra Deck rituals' bounce check expects Black Luster Soldier's 2500 piercing damage on the bounced Hane-Hane with --extra-deck-effects (the first full run's only failure; the bounce itself worked)"
+    ],
+    "not_verified": [
+      "a real device",
+      "a full duel with these cards in a CPU deck (only Joey's Thousand Dragon, his second deck's B. Skull Dragon, Mako's Fortress Whale and Bakura's Dokurorider are in CPU decks)",
+      "a link duel (Skull Guardian's question for the partner is wired as Suijin's)"
+    ]
   }
 }

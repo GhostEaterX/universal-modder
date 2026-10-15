@@ -271,6 +271,17 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   to Red-Eyes Black Metal Dragon is a menu command only the human gets. The CPU now flips its set Metalmorph
   onto its Red-Eyes (its equip pick steered there) and makes the upgrade itself, over two turns from its hand.
   The user tested it in Delta on iOS: it works.
+- **Fusion and Ritual monsters:** the same rules applied to the Level 7+ Fusion and Ritual monsters (and
+  Dokurorider). Each one that falls short of its cost (3000 ATK for three cards, more for a Ritual or for two
+  strong materials) gets an effect the engine already runs for another card: Summoned Skull's piercing,
+  Millennium Golem's survival, Shadow Ghoul's Graveyard count, effect key 1516's Battle Phase boost, Insect
+  Soldiers' and Mechanical Spider's attribute rules, Dark Magician's row, Goddess of Whim's coin, Dream Clown's
+  position trigger and Suijin's answer to an attack. Only Gaia the Dragon Champion's and Super War-Lion's
+  destroy is new: a check for a face-up monster with less ATK, gated to Main Phase 1, then Obelisk's
+  cannot-attack flag. Their kind stays Fusion or Ritual, which files them in the Extra Deck; that kind gives
+  an effect no spell speed, which only matters when it answers a chain link. The CPU plays them too; for
+  Bickuribox it now switches to Defense Position itself (39). 68 checks (48 played, 20 card texts) fail on the
+  build before; the cards they borrow from still work. Not yet run on a real device.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
@@ -422,6 +433,21 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
     `.data` and `.bss`, so the CPU can't remember "upgrade pending" between frames. Doing the menu's two
     steps at once works, with one catch: the Special Summon picks its zone while the Tribute is still queued,
     so it needs another free zone.
+39. **The original AI never moves a monster from Attack to Defense Position.** It only flips set monsters
+    and raises Defense Position ones to attack. So a trigger on "changed to Defense Position" (Dream Clown,
+    Tainted Wisdom, Yado Karu) never fires for the CPU. A card that should work for it needs its own switch:
+    the same `ChangeBattlePosition` call and `positionLocked` the human's menu uses.
+40. **"Can't attack the turn you use it" needs a phase gate.** `attackedMask` is cleared only when the Battle
+    Phase is entered (`CanEnterBattlePhase`), so in Main Phase 1 it still holds last turn's attacks, and the
+    zone's other mark (`positionLocked`) also comes from a summon or a position change. Allowing the effect only in Main Phase 1 (`gDuel.phase`) keeps
+    the monster from attacking first and destroying after; `DUEL_CMD_SET_CANNOT_ATTACK` (Obelisk's) does the
+    rest and is cleared at the next turn's start.
+41. **Rebuild a hooked tree from a clean worktree.** `build.sh` reuses `WORK/mod3-fx`, and each patch script
+    anchors on the code the patches before it leave. An earlier script can't re-apply over a later one that
+    edited the same lines (`patch_god_effects.py` stopped on `ai_deck.c`). Remove the worktree
+    (`git worktree remove --force`) before rebuilding with changed sources.
+42. **Check what the data says a card is.** The Gods are DARK in EDS's stats, so an anti-LIGHT rule never
+    touches them and an anti-DARK one (Kaiser Dragon's +1000, Mechanical Spider's destroy) does.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

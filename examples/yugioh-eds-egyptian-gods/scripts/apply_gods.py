@@ -17,9 +17,10 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
                                             the summon rules that patch_god_rules.py builds, and Senju of the
                                             Thousand Hands searching a Ritual Magic card
-                                            (patch_extra_deck_rituals.py) and the bosses' effects
-                                            (patch_boss_effects.py, BOSSES_3T). Each text is a fixed 480-byte
-                                            record, so nothing moves
+                                            (patch_extra_deck_rituals.py), the bosses' effects
+                                            (patch_boss_effects.py, BOSSES_3T) and the Fusion and Ritual
+                                            monsters' effects (patch_extra_deck_effects.py, EXTRA_DECK_3T).
+                                            Each text is a fixed 480-byte record, so nothing moves
   - text/dialogue.json                      with --text 3: a new last page for the 10th-win lines of the
                                             five duelists that switch to their second deck then
                                             (patch_second_decks.py). Each record is a fixed 0x304 bytes
@@ -264,6 +265,53 @@ BOSSES_3T = {
           "only."),
 }
 KIND_NORMAL, KIND_EFFECT = "0", "1"
+# And the high-Level Fusion and Ritual monsters (patch_extra_deck_effects.py): card ID -> (name, the new text).
+# Their kind stays Fusion or Ritual, which files them in the Extra Deck; each text names its Fusion Material
+# Monsters or its Ritual Magic card first.
+PIERCE = ("If this card attacks a Defense Position monster, inflict piercing battle damage to your opponent: the "
+          "amount this card's ATK exceeds that monster's DEF.")
+SURVIVE = "This card cannot be destroyed by battle. Its controller still takes any battle damage."
+GROWS = "This card gains 100 ATK for each monster in your Graveyard."
+CHAMPION = ("Once per turn, in your Main Phase 1: you can target 1 face-up monster your opponent controls with less "
+            "ATK than this card; destroy that target. This card cannot attack the turn you activate this effect.")
+THOUSAND = ("Time Wizard + Baby Dragon. Once per turn: you can call a coin toss. Call it right and this card's ATK "
+            "is doubled until the end of the turn; call it wrong and it is halved.")
+
+
+def ritual(magic, level, effect):
+    return (f'Ritual Summoned with "{magic}": Tribute monsters from your hand or field whose Levels total {level} '
+            f"or more. {effect}")
+
+
+EXTRA_DECK_3T = {
+    42: ("B. Skull Dragon", "Summoned Skull + Red-Eyes B. Dragon. " + PIERCE),
+    749: ("Twin-Headed Thunder Dragon", "Thunder Dragon + Thunder Dragon. During your Battle Phase, this card gains "
+                                        "300 ATK."),
+    637: ("Skull Knight", "Tainted Wisdom + Ancient Brain. " + GROWS),
+    251: ("Gaia the Dragon Champion", "Gaia The Fierce Knight + Curse of Dragon. " + CHAMPION),
+    395: ("Labyrinth Tank", "Giga-tech Wolf + Cannon Soldier. " + SURVIVE),
+    715: ("Thousand Dragon", THOUSAND),
+    716: ("Thousand Dragon", THOUSAND),
+    63: ("Bickuribox", "Crass Clown + Dream Clown. When this card is changed from Attack Position to Defense "
+                       "Position: target 1 monster your opponent controls; destroy that target."),
+    368: ("Kaiser Dragon", "Winged Dragon,Guardian of the Fortress #1 + Fairy Dragon. If this card battles a DARK "
+                           "monster, it gains 1000 ATK during damage calculation only."),
+    71: ("Black Luster Soldier", ritual("Black Luster Ritual", 8, PIERCE)),
+    433: ("Magician of Black Chaos", ritual("Dark Magic Ritual", 8, "Once per turn: you can target 1 Spell or Trap "
+                                            "card your opponent controls; destroy that target.")),
+    810: ("Zera The Mant", ritual("Zera Ritual", 8, GROWS)),
+    120: ("Crab Turtle", ritual("Turtle Oath", 8, SURVIVE)),
+    257: ("Garma Sword", ritual("Garma Sword Oath", 7, "If this card battles a LIGHT monster, that monster is "
+                                "destroyed.")),
+    109: ("Chakra", ritual("Resurrection of Chakra", 7, "This card gains 100 ATK for each monster in both players' "
+                                                       "Graveyards.")),
+    356: ("Javelin Beetle", ritual("Javelin Beetle Pact", 8, PIERCE)),
+    245: ("Fortress Whale", ritual("Fortress Whale's Oath", 7, SURVIVE)),
+    676: ("Super War-Lion", ritual("War-Lion Ritual", 7, CHAMPION)),
+    636: ("Skull Guardian", ritual("Novox's Prayer", 7, "Once per turn, when this face-up card is attacked: you can "
+                                   "make the attacking monster's ATK 0 during damage calculation.")),
+    176: ("Dokurorider", ritual("Revival of Dokurorider", 6, GROWS)),
+}
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
 DECK_SWAPS = {
@@ -455,7 +503,9 @@ def main():
             if data[card_id] != SENJU_TEXT_3T:
                 changes.append(f"text {name}: searches a Ritual Magic card")
                 data[card_id] = SENJU_TEXT_3T
-            for card_id, (name, _, text) in BOSSES_3T.items():
+            texts = [(card_id, name, text) for card_id, (name, _, text) in BOSSES_3T.items()]
+            texts += [(card_id, name, text) for card_id, (name, text) in EXTRA_DECK_3T.items()]
+            for card_id, name, text in texts:
                 if names[card_id] != name:
                     sys.exit(f"card ID {card_id} is {names[card_id]!r}, expected {name!r} (not the USA ROM?)")
                 if len(text.encode("ascii")) >= TEXT_RECORD:

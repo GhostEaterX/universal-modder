@@ -20,6 +20,9 @@
 #   - the bosses' effects: Summoned Skull pierces, Millennium Golem isn't destroyed by battle, Dark Magician and
 #     Red-Eyes B. Dragon destroy a card once per turn, Red-Eyes Black Metal Dragon gets a quarter of Metalmorph's
 #     bonus, and the Duel Computer gets two Barrel Dragons.
+#   - the Extra Deck effects: the high-Level Fusion and Ritual monsters get an effect each (piercing, survive
+#     battle, ATK that grows, Dark Magician's destroy, Goddess of Whim's coin, Dream Clown's and Suijin's
+#     triggers, and a once-per-turn destroy for Gaia the Dragon Champion and Super War-Lion).
 # The .bps is the only thing to share. All four variants can live in the same work dir.
 #
 # Needs git, python3, and eds-decomp's native toolchain on PATH: run eds-decomp's tools/setup_native.sh once,
@@ -58,8 +61,8 @@ cp "$ROM" "$WORK/vanilla/roms/base_eng.gba"
 (cd "$WORK/vanilla" && tools/dr make setup)
 
 # 3. The data: stats, passwords, ban list, NPC decks (and with --effects the Gods' card text; for gods-3t-fx
-#    also the 10th-win lines, the deck tuning, Senju's text and the bosses' text and kind). Both trees get the
-#    same assets.
+#    also the 10th-win lines, the deck tuning, Senju's text, the bosses' text and kind, and the Fusion and Ritual
+#    monsters' text). Both trees get the same assets.
 # shellcheck disable=SC2086
 python3 "$HERE/apply_gods.py" "$WORK/vanilla" $TEXT
 rm -rf "$WORK/$MOD/assets" "$WORK/$MOD/roms"
@@ -71,7 +74,8 @@ ln -sf roms/base_eng.gba "$WORK/$MOD/baserom.gba"
 #    the Gods' effects (two new units, src/god_effects.c and data/god_effects_table.s), and for gods-3t-fx
 #    the pack viewer (src/pack_viewer.c, with its odds table generated from your booster_packs.json), the
 #    Gods' summon rules (src/god_rules.c), the second decks (src/second_decks.c), the Ritual monsters in the
-#    Extra Deck (src/extra_deck_rituals.c) and the bosses' effects (src/boss_effects.c).
+#    Extra Deck (src/extra_deck_rituals.c), the bosses' effects (src/boss_effects.c) and the Fusion and Ritual
+#    monsters' effects (src/extra_deck_effects.c).
 python3 "$HERE/patch_source.py" "$WORK/$MOD"
 if [ "$TRIBUTES" = 3 ]; then python3 "$HERE/patch_three_tributes.py" "$WORK/$MOD"; fi
 if [ "$EFFECTS" = 1 ]; then python3 "$HERE/patch_god_effects.py" "$WORK/$MOD"; fi
@@ -81,9 +85,10 @@ if [ "$TRIBUTES" = 3 ] && [ "$EFFECTS" = 1 ]; then
     python3 "$HERE/patch_second_decks.py" "$WORK/$MOD"
     python3 "$HERE/patch_extra_deck_rituals.py" "$WORK/$MOD"
     python3 "$HERE/patch_boss_effects.py" "$WORK/$MOD"
-    BOSS_ROWS=--boss-rows
+    python3 "$HERE/patch_extra_deck_effects.py" "$WORK/$MOD"
+    APPENDED_ROWS="--boss-rows --extra-deck-rows"
 else
-    BOSS_ROWS=
+    APPENDED_ROWS=
 fi
 
 # 5. Build both. The vanilla tree keeps the original layout; the mod tree only supplies objects.
@@ -95,7 +100,7 @@ done
 # 6. Hook the changed functions into the original layout.
 python3 "$HERE/hookbuild.py" "$WORK/vanilla" "$WORK/$MOD" "$WORK/$OUT.gba"
 # shellcheck disable=SC2086
-if [ "$EFFECTS" = 1 ]; then python3 "$HERE/check_effect_table.py" "$WORK/vanilla" "$WORK/$OUT.gba" $BOSS_ROWS; fi
+if [ "$EFFECTS" = 1 ]; then python3 "$HERE/check_effect_table.py" "$WORK/vanilla" "$WORK/$OUT.gba" $APPENDED_ROWS; fi
 
 # 7. The patch, checked by applying it back onto your ROM.
 if command -v flips >/dev/null 2>&1; then

@@ -5,7 +5,8 @@
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
     run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
-                   --second-decks --deck-tuning --extra-deck-rituals --boss-effects [--control gods-3t.gba]
+                   --second-decks --deck-tuning --extra-deck-rituals --boss-effects --extra-deck-effects \
+                   [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -35,7 +36,8 @@ checks also run on a control ROM, where each check says what must happen there:
   - with --extra-deck-rituals, the same control for the Ritual monsters in the Extra Deck: the CPU's rituals
     load into its Fusion Deck (the decks of the two suites above expect that too), Deck Edit files them there
     and refuses them the Side Deck, a save from before moves them there at boot (save_migration.lua), the
-    Ritual Magic cards summon them from there for both players, a bounced one goes back there, Senju searches
+    Ritual Magic cards summon them from there for both players, a bounced one goes back there (Black Luster
+    Soldier, which with --extra-deck-effects also pierces the Hane-Hane that bounces it), Senju searches
     a Ritual Magic card and Cyber-Stein keeps to Fusion monsters; all of that fails on the control, and the
     regressions (a ritual from the hand, a Normal monster to the Side Deck, a save without rituals) pass;
   - with --boss-effects, the same control for the bosses' effects: Summoned Skull's piercing damage, Millennium
@@ -45,6 +47,14 @@ checks also run on a control ROM, where each check says what must happen there:
     control, and the regressions (Raigeki on Golem, the player's Metalmorph upgrade, B. Skull Dragon's fusion,
     Black Metal Dragon attacked, a set Metalmorph without Black Metal Dragon in the deck) pass. It also makes the rules
     suite's Effect Monsters filter expect the Trunk's Dark Magician, an Effect monster now.
+  - with --extra-deck-effects, the same control for the Fusion and Ritual monsters' effects: piercing (B. Skull
+    Dragon, Black Luster Soldier, Javelin Beetle), surviving battle (Labyrinth Tank, Crab Turtle, Fortress
+    Whale), the ATK rules (Twin-Headed Thunder Dragon in its Battle Phase, +100 per Graveyard monster for Skull
+    Knight, Zera The Mant, Dokurorider and Chakra, Kaiser Dragon against DARK), Garma Sword against LIGHT,
+    Magician of Black Chaos' destroy, Thousand Dragon's coin (both calls, both arts, until the end of the turn),
+    Bickuribox's trigger, Skull Guardian's answer (also once Ritual Summoned) and Gaia's and Super War-Lion's
+    destroy and its limits, each for the CPU where it plays it; all of that fails on the control, and the
+    regressions (the cards they borrow from, the cases where the effect must not change the result) pass.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -393,7 +403,7 @@ BLS, MOBC, RELINQUISHED, BLACK_LUSTER_RITUAL, BLACK_ILLUSION_RITUAL = "71", "433
 FULL_FUSION_DECK = "10,10,10,14,14,14,28,28,28,42,42,42,46,46,46,63,63,63,89,89"   # 20 Fusion monsters
 
 
-def extra_deck_rituals_suite():
+def extra_deck_rituals_suite(effects=False):
     sys.path.insert(0, str(HERE.parent / "scripts"))
     from apply_gods import SENJU_TEXT_3T
     fusion_deck = lambda name, opp, ids: check(
@@ -434,9 +444,11 @@ def extra_deck_rituals_suite():
         check("Extra Deck: the CPU's Ritual Summon from its Fusion Deck", E, "duel_main1", 3000, END_TURN_KEYS,
               {"C_HAND": "69,82,82,82,82", "C_FUSION": RELINQUISHED, "P_HAND": SIX("1")},
               r"C 582,0,0,0,0 [^\n]*fusion P\{\} C\{\}"),
+        # the CPU's set Hane-Hane; with the Extra Deck effects, Black Luster Soldier pierces it (3000 - 500 DEF)
         check("Extra Deck: a bounced ritual goes back to the Fusion Deck", E, "duel_turn2", 2200, HANE_KEYS,
-              {"P_ZONES": "0:" + BLS, "C_ZONES": "0:312:s"},        # the CPU's set Hane-Hane
-              r"P 0,0,0,0,0 C 0,0,0,0,0 LP 7900 8000 hand 6 5 grave 1 \d links P\{\} C\{\} fusion P\{71\}"),
+              {"P_ZONES": "0:" + BLS, "C_ZONES": "0:312:s"},
+              rf"P 0,0,0,0,0 C 0,0,0,0,0 LP 7900 {5500 if effects else 8000} hand 6 5 grave 1 \d links P\{{\}} "
+              r"C\{\} fusion P\{71\}"),
         check("Extra Deck: Senju adds a Ritual Magic card", E, "duel_main1", 1700, SENJU_KEYS,
               {"P_HAND": SIX("621"), "P_DECK": BLACK_LUSTER_RITUAL}, r"P 621,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5"),
         check("Extra Deck: Senju's card text", None, None, 0, None, {}, SENJU_TEXT_3T.encode("ascii")),
@@ -529,6 +541,143 @@ def boss_effects_suite():
               {"C_HAND": "552,675,579,82,82", "C_FUSION": "42", "P_HAND": "1,1,1,1,1"}, r"C 42,0,0,0,0",
               control="passes"),
     ] + [check(f"bosses: {name}'s card text", None, None, 0, None, {}, text.encode("ascii"))
+         for text, name in texts.items()]
+
+
+# The Fusion and Ritual monsters' effects. Zone 0's menu: Def Pos is the second command (Card View, Def Pos).
+DEF_POS_KEYS = "20 UP; 40 UP; 70 A; 120 RIGHT; 240 A"
+BICKURIBOX_KEYS = DEF_POS_KEYS + "; 720 A; 820 A"            # A through the "destroy" prompt, the CPU's zone 0
+THOUSAND_DRAGON_KEYS = ACTIVATE_KEYS + "; 700 A"             # call Heads (the cursor's first choice)
+CHAMPION_KEYS = RED_EYES_KEYS                                # Activate, A through the prompt, the CPU's zone 0
+SKULL_GUARDIAN_KEYS = END_TURN_KEYS + "; 1100 A"             # Yes, when the CPU's attack asks
+DOKURORIDER_GRAVE = ",".join(["1"] * 12)
+
+
+def extra_deck_effects_suite():
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from apply_gods import EXTRA_DECK_3T
+    texts = {text: name for name, text in EXTRA_DECK_3T.values()}
+    battle = lambda name, env, regex, **kw: check(f"Extra Deck: {name}", E, "duel_turn2", 1800, BATTLE_KEYS, env,
+                                                  regex, **kw)
+    cpu = lambda name, env, regex, frames=4000, keys=END_TURN_KEYS, **kw: check(
+        f"Extra Deck: {name}", E, "duel_main1", frames, keys, dict(QUIET_CPU, **env), regex, **kw)
+    main = lambda name, frames, keys, env, regex, **kw: check(f"Extra Deck: {name}", E, "duel_main1", frames, keys,
+                                                               env, regex, **kw)
+    return [
+        # always on, in battle (the player attacks the CPU's zone 0 in duel_turn2)
+        battle("B. Skull Dragon pierces", {"P_ZONES": "0:42", "C_ZONES": "0:1:d"},
+               r"P 42,0,0,0,0 C 0,0,0,0,0 LP 7900 5600"),
+        battle("Black Luster Soldier pierces", {"P_ZONES": "0:71", "C_ZONES": "0:1:d"},
+               r"P 71,0,0,0,0 C 0,0,0,0,0 LP 7900 5800"),
+        battle("Javelin Beetle pierces", {"P_ZONES": "0:356", "C_ZONES": "0:1:d"},
+               r"P 356,0,0,0,0 C 0,0,0,0,0 LP 7900 6350"),
+        cpu("the CPU's B. Skull Dragon pierces", {"C_ZONES": "0:42", "P_ZONES": "0:1:d"},
+            r"P 0,0,0,0,0 C 42,0,0,0,0 LP 5600 8000"),
+        battle("Labyrinth Tank survives Blue-Eyes", {"P_ZONES": "0:395", "C_ZONES": "0:82"},
+               r"P 395,0,0,0,0 C 82,0,0,0,0 LP 7300 8000"),
+        battle("Crab Turtle survives Blue-Eyes", {"P_ZONES": "0:120", "C_ZONES": "0:82"},
+               r"P 120,0,0,0,0 C 82,0,0,0,0 LP 7450 8000"),
+        battle("Fortress Whale survives Blue-Eyes", {"P_ZONES": "0:245", "C_ZONES": "0:82"},
+               r"P 245,0,0,0,0 C 82,0,0,0,0 LP 7250 8000"),
+        cpu("... and the CPU's Blue-Eyes", {"C_ZONES": "0:82", "P_ZONES": "0:245"},
+            r"P 245,0,0,0,0 C 82,0,0,0,0 LP 7350 8000"),
+        battle("Twin-Headed Thunder Dragon: 3100 in its Battle Phase", {"P_ZONES": "0:749", "C_ZONES": "0:82"},
+               r"P 749,0,0,0,0 C 0,0,0,0,0 LP 7900 7900"),
+        cpu("... 2800 in the CPU's", {"C_ZONES": "0:82", "P_ZONES": "0:749"},
+            r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7800 8000", control="passes"),
+        battle("Skull Knight: +100 per monster in the Graveyard (4)",
+               {"P_ZONES": "0:637", "C_ZONES": "0:82", "P_GRAVE": "1,1,1,1"}, r"P 637,0,0,0,0 C 0,0,0,0,0 LP 7900 7950"),
+        battle("... and 2950 with 3", {"P_ZONES": "0:637", "C_ZONES": "0:82", "P_GRAVE": "1,1,1"},
+               r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7850 8000"),
+        cpu("the CPU's Skull Knight counts its Graveyard", {"C_ZONES": "0:637", "C_GRAVE": "1,1,1,1", "P_ZONES": "0:82"},
+            r"P 0,0,0,0,0 C 637,0,0,0,0 LP 7950 8000"),
+        battle("Zera The Mant: +100 per monster in the Graveyard",
+               {"P_ZONES": "0:810", "C_ZONES": "0:82", "P_GRAVE": "1,1,1"}, r"P 810,0,0,0,0 C 0,0,0,0,0 LP 7900 7900"),
+        battle("Dokurorider: +100 per monster in the Graveyard",
+               {"P_ZONES": "0:176", "C_ZONES": "0:82", "P_GRAVE": DOKURORIDER_GRAVE},
+               r"P 176,0,0,0,0 C 0,0,0,0,0 LP 7900 7900"),
+        battle("Chakra counts both Graveyards",
+               {"P_ZONES": "0:109", "C_ZONES": "0:82", "P_GRAVE": "1,1,1", "C_GRAVE": "1,1,1"},
+               r"P 109,0,0,0,0 C 0,0,0,0,0 LP 7900 7950"),
+        battle("... 2750 with its own 3 only", {"P_ZONES": "0:109", "C_ZONES": "0:82", "P_GRAVE": "1,1,1"},
+               r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7650 8000"),
+        battle("Kaiser Dragon: +1000 against DARK Dark Magician", {"P_ZONES": "0:368", "C_ZONES": "0:150"},
+               r"P 368,0,0,0,0 C 0,0,0,0,0 LP 7900 7200"),
+        cpu("... also when Dark Magician attacks it", {"C_ZONES": "0:150", "P_ZONES": "0:368"},
+            r"P 368,0,0,0,0 C 0,0,0,0,0 LP 8000 7200"),
+        battle("... not against LIGHT Blue-Eyes", {"P_ZONES": "0:368", "C_ZONES": "0:82"},
+               r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7200 8000", control="passes"),
+        battle("Garma Sword takes LIGHT Blue-Eyes with it", {"P_ZONES": "0:257", "C_ZONES": "0:82"},
+               r"P 0,0,0,0,0 C 0,0,0,0,0 LP 7450 8000"),
+        cpu("... also when Blue-Eyes attacks it", {"C_ZONES": "0:82", "P_ZONES": "0:257"},
+            r"P 0,0,0,0,0 C 0,0,0,0,0 LP 7550 8000"),
+        # Magician of Black Chaos: Dark Magician's effect
+        main("Magician of Black Chaos destroys a set card", 1600, DARK_MAGICIAN_KEYS,
+             {"P_ZONES": "0:433:e", "C_ZONES": "5:737:s,6:476:s"}, r"P 433,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1"),
+        cpu("the CPU's Magician of Black Chaos", {"C_ZONES": "0:433:u", "P_ZONES": "5:737:s"},
+            r"P 0,0,0,0,0 C 433,0,0,0,0 LP 5200 8000 hand 6 6 grave 1 0"),
+        # Thousand Dragon: Goddess of Whim's coin, both arts; the link ends with the turn
+        main("Thousand Dragon: a right call doubles ATK", 1300, THOUSAND_DRAGON_KEYS,
+             dict(HEADS, P_ZONES="0:715:e", C_ZONES="0:82"), r"coin heads\n.*links P\{0\[3/1=715\]\}"),
+        main("... a wrong one halves it", 1300, THOUSAND_DRAGON_KEYS,
+             dict(CPU_TAILS, P_ZONES="0:715:e", C_ZONES="0:82"), r"coin tails\n.*links P\{0\[3/0=715\]\}"),
+        main("... the alternate art too", 1300, THOUSAND_DRAGON_KEYS,
+             dict(HEADS, P_ZONES="0:716:e", C_ZONES="0:82"), r"links P\{0\[3/1=716\]\}"),
+        main("... until the end of the turn", 2600, THOUSAND_DRAGON_KEYS + "; 1300 B; 1340 A",
+             dict(QUIET_CPU, **HEADS, P_ZONES="0:715:e"), r"links P\{0\[3/1=715\]\}[\s\S]*links P\{\} C\{\}"),
+        cpu("the CPU's Thousand Dragon, right: 4800 on Blue-Eyes", dict(PIN_RNG="DEADBEEF", C_ZONES="0:715:u",
+                                                                       P_ZONES="0:82"),
+            r"C\{0\[3/1=715\]\}[\s\S]*P 0,0,0,0,0 C 715,0,0,0,0 LP 6200 8000"),
+        cpu("the CPU's Thousand Dragon, wrong: no attack", dict(CPU_TAILS, C_ZONES="0:715:u", P_ZONES="0:82"),
+            r"C\{0\[3/0=715\]\}[\s\S]*P 82,0,0,0,0 C 715,0,0,0,0 LP 8000 8000 [^\n]*links P\{\} C\{\}"),
+        # Bickuribox: Dream Clown's trigger, and the CPU makes the change itself
+        main("Bickuribox to Defense destroys Blue-Eyes", 1500, BICKURIBOX_KEYS, {"P_ZONES": "0:63", "C_ZONES": "0:82"},
+             r"P 63,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1"),
+        cpu("the CPU's Bickuribox goes to Defense on Blue-Eyes", {"C_ZONES": "0:63", "P_ZONES": "0:82"},
+            r"P 0,0,0,0,0 C 63,0,0,0,0 LP 8000 8000 hand 6 6 grave 1 0"),
+        cpu("... and attacks a weaker monster", {"C_ZONES": "0:63", "P_ZONES": "0:1"},
+            r"P 0,0,0,0,0 C 63,0,0,0,0 LP 7500 8000", control="passes"),
+        # Skull Guardian: Suijin's answer, once per turn
+        cpu("Skull Guardian zeroes the attacking Blue-Eyes", {"P_ZONES": "0:636:e", "C_ZONES": "0:82"},
+            r"P 636,0,0,0,0 C 0,0,0,0,0 LP 8000 5950", keys=SKULL_GUARDIAN_KEYS),
+        cpu("... once per turn", {"P_ZONES": "0:636:e", "C_ZONES": "0:82,1:82"},
+            r"P 0,0,0,0,0 C 0,82,0,0,0 LP 7050 5950", frames=5000, keys=SKULL_GUARDIAN_KEYS),
+        cpu("... ready when Ritual Summoned", {"P_HAND": SIX("524"), "P_ZONES": "0:150", "P_FUSION": "636",
+                                                "C_ZONES": "0:82"},
+            r"P 636,0,0,0,0 C 0,0,0,0,0 LP 8000 5950", frames=3500,
+            keys=RITUAL_KEYS + "; 1300 B; 1340 A; 2400 A"),
+        # Gaia the Dragon Champion and Super War-Lion
+        main("Gaia destroys a weaker monster and can't attack", 1500, CHAMPION_KEYS,
+             {"P_ZONES": "0:251:e", "C_ZONES": "0:150"},
+             r"P 251,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1 links P\{0\[ noatk\]\}"),
+        main("... no Activate against a stronger one", 1500, CHAMPION_KEYS, {"P_ZONES": "0:251:e", "C_ZONES": "0:82"},
+             r"grave 0 1", must=False, control="passes"),
+        main("... or a face-down one", 1500, CHAMPION_KEYS, {"P_ZONES": "0:251:e", "C_ZONES": "0:1:s"},
+             r"grave 0 1", must=False, control="passes"),
+        main("... or once its effect is used", 1500, CHAMPION_KEYS, {"P_ZONES": "0:251:u", "C_ZONES": "0:150"},
+             r"grave 0 1", must=False, control="passes"),
+        main("... refuses the stronger pick, takes the weaker", 1800, CHAMPION_KEYS + "; 700 RIGHT; 760 A",
+             {"P_ZONES": "0:251:e", "C_ZONES": "0:82,1:150"}, r"P 251,0,0,0,0 C 82,0,0,0,0 [^\n]*grave 0 1"),
+        main("Super War-Lion destroys a weaker monster", 1500, CHAMPION_KEYS, {"P_ZONES": "0:676:e", "C_ZONES": "0:1"},
+             r"P 676,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1 links P\{0\[ noatk\]\}"),
+        cpu("the CPU's Gaia takes a Defense Position monster", {"C_ZONES": "0:251:u", "P_ZONES": "0:1:d"},
+            r"P 0,0,0,0,0 C 251,0,0,0,0 LP 8000 8000 hand 6 6 grave 1 0 links P\{\} C\{0\[ noatk\]\}"),
+        cpu("... one of two monsters", {"C_ZONES": "0:251:u", "P_ZONES": "0:1,1:1"},
+            r"P 0,1,0,0,0 C 251,0,0,0,0 LP 8000 8000 hand 6 6 grave 1 0 links P\{\} C\{0\[ noatk\]\}", frames=4500),
+        cpu("... and attacks a lone Attack Position one", {"C_ZONES": "0:251:u", "P_ZONES": "0:1"},
+            r"P 0,0,0,0,0 C 251,0,0,0,0 LP 7200 8000", control="passes"),
+        # the cards they borrow from
+        main("regression: Dream Clown still destroys", 1500, BICKURIBOX_KEYS, {"P_ZONES": "0:186", "C_ZONES": "0:82"},
+             r"P 186,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5 grave 0 1", control="passes"),
+        cpu("regression: Suijin still zeroes", {"P_ZONES": "0:674:e", "C_ZONES": "0:82"},
+            r"P 674,0,0,0,0 C 0,0,0,0,0 LP 8000 5500", keys=SKULL_GUARDIAN_KEYS, control="passes"),
+        # either side of the coin (the pinned state lands differently on the control): it still links
+        main("regression: Goddess of Whim's coin", 1300, THOUSAND_DRAGON_KEYS,
+             dict(HEADS, P_ZONES="0:284:e", C_ZONES="0:82"), r"coin (heads|tails)\n.*links P\{0\[3/[01]=284\]\}",
+             control="passes"),
+        battle("regression: Mechanical Spider takes DARK Dark Magician", {"P_ZONES": "0:453", "C_ZONES": "0:150"},
+               r"P 0,0,0,0,0 C 0,0,0,0,0 LP 5800 8000", control="passes"),
+    ] + [check(f"Extra Deck: {name}'s card text", None, None, 0, None, {}, text.encode("ascii"))
          for text, name in texts.items()]
 
 
@@ -648,6 +797,8 @@ def main():
     ap.add_argument("--extra-deck-rituals", action="store_true",
                     help="the ROM has the Ritual monsters in the Extra Deck (gods-3t-fx)")
     ap.add_argument("--boss-effects", action="store_true", help="the ROM has the bosses' effects (gods-3t-fx)")
+    ap.add_argument("--extra-deck-effects", action="store_true",
+                    help="the ROM has the Fusion and Ritual monsters' effects (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -669,11 +820,14 @@ def main():
         checks = checks + deck_tuning_suite(rituals)
         tag += "dt"
     if rituals:
-        checks = checks + extra_deck_rituals_suite()
+        checks = checks + extra_deck_rituals_suite(args.extra_deck_effects)
         tag += "edr"
     if args.boss_effects:
         checks = checks + boss_effects_suite()
         tag += "boss"
+    if args.extra_deck_effects:
+        checks = checks + extra_deck_effects_suite()
+        tag += "xde"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

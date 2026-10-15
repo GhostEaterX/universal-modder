@@ -584,3 +584,59 @@
 
 ## 2026-10-15: the CPU's Metalmorph on a real device
 - **Delta on iOS (user's test):** `gods-3t-fx` `eabd901f...` (Joey's Metalmorph, played by the CPU) works.
+
+## 2026-10-15: the Fusion and Ritual monsters' effects (in `gods-3t-fx`)
+- **User's ask:** apply the bosses' five rules (worth its cost, keeps paying, still answerable, usable by the
+  CPU, scales) to the Fusion and Ritual monsters; find the effects the engine already has and cross-reference
+  them with the Fusion Deck inventory. The analysis went on a shared page: 67 Fusion Deck cards, 21 reviewed
+  (Level 7+ and Dokurorider), 19 effects proposed, sized by the gap between the card's ATK and a bar (3000 for
+  three cards, +300 for a Ritual, +500 for a Fusion of two 2000+ ATK materials), and capped by the tier of a
+  CPU duelist that plays the card. The user approved the scope and all three large effects (Gaia, Super
+  War-Lion, Skull Guardian). Giving CPU decks some of these cards was left open.
+- **The code:** `src/extra_deck_effects.c` (new unit) and `scripts/patch_extra_deck_effects.py`, 18 anchored
+  edits in 11 files, after the boss patch:
+  - battle (`CalcBattle`): piercing and survival through `ExtraDeckPierces` and
+    `ExtraDeckBattleIndestructible` next to the bosses' hooks; Kaiser Dragon's +1000 beside Insect Soldiers'
+    boost, for the attacker and the defender; Garma Sword's LIGHT rule before the survival loop, so a
+    battle-proof monster would still survive it;
+  - stats (`GetZoneCardStats`): only case labels added to the engine's own cases (key 1516's Battle Phase
+    boost, Shadow Ghoul's Graveyard count, Goddess of Whim's coin link), and a Chakra case over both
+    Graveyards;
+  - six effect rows after the bosses' (721, 36, 355, 68, 2068, 384); `ExtraDeckFindCardEffect` scans the boss
+    rows, then these; `check_effect_table.py --extra-deck-rows` checks them (437 rows);
+  - Bickuribox and Skull Guardian join Dream Clown's and Suijin's case lists (and the link duel's question);
+  - the once-per-turn reset, the Activate list, Thousand Dragon's end-of-turn link removal and the CPU.
+- **The data (`apply_gods.py --text 3`, `EXTRA_DECK_3T`):** 20 texts in my own wording, each naming the Fusion
+  Material Monsters or the Ritual Magic card with its Levels first. The kind stays Fusion or Ritual: it files
+  them in the Extra Deck, and its missing spell speed only matters when an effect answers a chain link.
+- **Refinements while building:**
+  - Gaia and Super War-Lion take a face-up monster only: a set monster's ATK would show through the pick.
+  - "This card can't attack the turn you use it": nothing reliable marks "attacked this turn" (`attackedMask`
+    clears when the Battle Phase starts, `positionLocked` also comes from a summon), so the effect is gated
+    to Main Phase 1, then sets Obelisk's cannot-attack flag.
+  - The CPU's Gaia uses it on a Defense Position target or with two or more targets; against one Attack
+    Position monster it attacks, which also deals damage.
+  - The CPU's Thousand Dragon tosses only in Attack Position.
+  - Skull Guardian's answer resets at its controller's turn start (Suijin's never resets).
+- **Gotcha, the CPU never goes to Defense Position:** the first build's CPU Bickuribox just sat there. The
+  original AI raises Defense Position monsters to attack and flips set ones, but never moves one down, so a
+  Dream Clown never triggers for it either. `ExtraDeckAiActivateEffects` now switches a face-up Attack
+  Position Bickuribox (`ChangeBattlePosition`, `positionLocked`, the menu's own checks) when the human has a
+  face-up monster at least as strong.
+- **Gotcha, rebuilding in place:** `build.sh` reuses the mod worktree, and `patch_god_effects.py` couldn't find
+  its `ai_deck.c` anchor under the newer edits. Removing the worktree first fixed it.
+- **Gotcha, the Gods are DARK** in EDS's stats: Kaiser Dragon gets its +1000 against them (3300 still loses to
+  Obelisk), Garma Sword's LIGHT rule never touches them.
+- **Checks that changed:** the Goddess of Whim regression now accepts either side of the coin (the pinned
+  state lands tails on the control build, heads on this one; the check is that the coin still links). The
+  Extra Deck rituals' bounce check (Black Luster Soldier into a set Hane-Hane) now expects 2500 piercing
+  damage with `--extra-deck-effects`: the first full run failed there only, with the bounce itself working.
+- **Seen on screenshots:** the new texts in Card View ("[Dragon/Fusion]", "[Warrior/Ritual]"), Gaia's pick
+  moving from Blue-Eyes to Dark Magician, Bickuribox's "destroy" prompt, Skull Guardian's question, Thousand
+  Dragon's coin.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 219/219 against `gods-3t` (151 before, plus 68: 48 played checks and the
+    20 card texts), every control comparison as expected (17 not compared);
+  - `gods-3t-fx` is `32a5568d...` (`.bps` 82,537 bytes), the same ROM and `.bps` from two fresh work dirs (the
+    second cloned eds-decomp from GitHub); `gods`, `gods-3t` and `gods-fx` rebuild unchanged;
+  - pytest, `um kb check --index` and `um publish check .` pass.
