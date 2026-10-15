@@ -6,13 +6,15 @@
 --   P_HAND / C_HAND    card IDs for the first hand slots; P_HANDN / C_HANDN set the hand size.
 --   P_GRAVE / C_GRAVE  card IDs for the graveyard, bottom first (replaces it).
 --   P_LP / C_LP        Life Points.
---   C_DECK             card IDs written over the CPU's whole deck, cycling through the list (its size stays), so
---                      a search or a recruit finds them.
+--   C_DECK / P_DECK    card IDs written over the CPU's / player's whole deck, cycling through the list (its size
+--                      stays), so a search or a recruit finds them.
+--   P_FUSION / C_FUSION  card IDs for the Fusion Deck (replaces it).
 -- Each log line: the monster zones (card IDs, "s" after a face-down one), LP, hand and graveyard sizes, and
 -- the zone links of every monster that has any, as kind/count=value (Ra's paid LP is kind 14, Slifer's drain
--- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag.
+-- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag; then the Fusion
+-- Decks' card IDs, "fusion P{...} C{...}".
 local P = { [0] = 0x020192E4, [1] = 0x020192E4 + 0xD64 }   -- gDuelPlayers[0], [1]
-local ZONES, ZONE_SIZE, HAND, GRAVE, DECK = 0x28, 0x94, 0x684, 0x904, 0x7C4
+local ZONES, ZONE_SIZE, HAND, GRAVE, DECK, FUSION = 0x28, 0x94, 0x684, 0x904, 0x7C4, 0xA44
 local frame, last = 0, ""
 
 local function env(name)
@@ -72,6 +74,22 @@ local function grave(player, spec)
     emu:write8(P[player] + 4, n)
 end
 
+local function fusion(player, spec)
+    if not spec then return end
+    local n = 0
+    for id in spec:gmatch("%d+") do
+        emu:write32(P[player] + FUSION + n * 4, tonumber(id) | (player == 1 and 0x1000 or 0))
+        n = n + 1
+    end
+    emu:write8(P[player] + 5, n)
+end
+
+local function fusionIds(player)
+    local t = {}
+    for i = 0, emu:read8(P[player] + 5) - 1 do t[#t + 1] = tostring(emu:read32(P[player] + FUSION + i * 4) & 0xFFF) end
+    return table.concat(t, ",")
+end
+
 local function side(player)
     local ids, links = {}, {}
     for z = 0, 4 do
@@ -122,14 +140,17 @@ callbacks:add("frame", function()
         grave(0, env("P_GRAVE"))
         grave(1, env("C_GRAVE"))
         deck(1, env("C_DECK"))
+        deck(0, env("P_DECK"))
+        fusion(0, env("P_FUSION"))
+        fusion(1, env("C_FUSION"))
         if env("P_LP") then emu:write16(P[0], tonumber(env("P_LP"))) end
         if env("C_LP") then emu:write16(P[1], tonumber(env("C_LP"))) end
     end
     local pz, pl = side(0)
     local cz, cl = side(1)
-    local s = string.format("P %s C %s LP %d %d hand %d %d grave %d %d links P{%s} C{%s}", pz, cz,
+    local s = string.format("P %s C %s LP %d %d hand %d %d grave %d %d links P{%s} C{%s} fusion P{%s} C{%s}", pz, cz,
         emu:read16(P[0]), emu:read16(P[1]), emu:read8(P[0] + 2), emu:read8(P[1] + 2),
-        emu:read8(P[0] + 4), emu:read8(P[1] + 4), pl, cl)
+        emu:read8(P[0] + 4), emu:read8(P[1] + 4), pl, cl, fusionIds(0), fusionIds(1))
     if s ~= last then
         console:log(string.format("f%d %s", frame, s))
         last = s

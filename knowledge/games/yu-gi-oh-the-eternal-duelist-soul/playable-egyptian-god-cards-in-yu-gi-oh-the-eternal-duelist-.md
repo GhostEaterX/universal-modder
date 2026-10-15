@@ -234,6 +234,22 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   Egotist, Toon World with Toon Mermaid and Fissure each work in a scripted CPU turn (pass on both builds).
 - **On a real device:** the user tested the tuned build in Delta on iOS: it works.
 
+### Also in the fourth build: Ritual monsters in the Extra Deck
+- **The Extra Deck is the Fusion Deck:** 20 saved cards (`gSaveData.fusionDeck`, +0x209E), 80 in a duel
+  (+0xA44 in a player, `fusionCount` +5), outside the Deck count, never drawn. The game files a card there when
+  its kind (stats bits 18-19) is Fusion, and it makes that call in about a dozen places, each with an inline
+  copy of the kind classifier: Deck Edit's filing, copy counts and Side Deck command, the CPU's deck loader,
+  the bounce and return-to-Deck paths, `AddCardToHand`.
+- **The change:** one predicate, `IsExtraDeckMonster` (Fusion or Ritual, not a God), at each of those places;
+  the Ritual Magic cards look in the Fusion Deck first and take the monster out with the command
+  Polymerization uses. Senju now searches a Ritual Magic card (Sonic Bird's search and prompt), and
+  Cyber-Stein keeps to Fusion monsters, or it could pull a Ritual monster for 5000 LP.
+- **Old saves:** moved once, in `GameInit` right after the SRAM read, with the checksum updated. The test boots
+  a real save: the Lua writes it to SRAM over the bus, then `emu:reset()`.
+- **Checks:** the CPU's rituals in its Fusion Deck, Deck Edit's filing and refusal, the save move, both
+  players' Ritual Summons from the Fusion Deck, a bounce back to it, Senju and Cyber-Stein fail on the old
+  build; a ritual from the hand and a Normal monster to the Side Deck still work.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -350,6 +366,16 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
     Sebek's Blessing (from the code).
 29. **A CPU trigger can wait for you.** When the CPU's recruiter is destroyed, its chain link shows "Chain:
     Activating" and waits for A from the human player, so a scripted test needs A presses after the battle.
+30. **The CPU skips its spells on a turn it summons to attack.** When it plans an attack, `AiStepMainPhase`
+    Normal Summons first and ends Main Phase 1, and Main Phase 2 plays no spells. A test of a CPU spell needs
+    a hand it can't summon from (Level 8s), or the spell never comes. Trace `gAiState` (0x02015EF0: step +1,
+    subState +6) before blaming the spell's own check.
+31. **A rule rewrite that counts its matches breaks on new code.** `patch_source.py` rewrites every
+    `<= CARD_TYPE_REPTILE` in `src/` and stops unless it finds exactly 85; a later unit with the same test
+    would make a rerun fail. Write new code against the rewritten predicate (`CARD_TYPE_IS_MONSTER`).
+32. **The save is read once, at boot.** EDS copies SRAM to `gSaveData` in `GameInit`, and only the title
+    screen checks it (the checksum decides whether Continue shows). A one-time save fix belongs right after
+    the read, and it must update the checksum or Continue disappears.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

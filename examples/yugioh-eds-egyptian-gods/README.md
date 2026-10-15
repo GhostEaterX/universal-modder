@@ -45,6 +45,18 @@ can own but never use. This mod makes them real monsters, for you and for the CP
     Rex, Barrel Dragon for Espa Roba, Mother Grizzly for Mako, and Harpie Lady Sisters for Mai, so that her
     Elegant Egotist combo can finish.
   - Every new card is one the CPU plays.
+- **Ritual monsters in the Extra Deck (`gods-3t-fx.bps`):** the game's Extra Deck is the Fusion Deck: up to 20
+  cards beside your 40-60-card Deck, never drawn. Ritual monsters now live there too, like Fusion monsters:
+  - Deck Edit files a Ritual monster in the Fusion Deck, never in the Side Deck. The CPU's rituals load into
+    its Fusion Deck too: Bakura's Dokurorider, Mako's Fortress Whale and Pegasus's two Relinquished.
+  - A Ritual Magic card summons its monster from the Fusion Deck. The Tributes still come from your hand or
+    field, with the same level rule. The CPU does the same.
+  - A Ritual monster that would go back to your hand or Deck returns to the Fusion Deck.
+  - Senju of the Thousand Hands adds a Ritual Magic card from your Deck instead of a Ritual monster, and its
+    text says so. Cyber-Stein summons Fusion monsters only.
+  - A save from before the patch: the first time it boots, its Ritual monsters move from the Deck to the
+    Fusion Deck (to the Trunk if the Fusion Deck is full). If your Deck then has fewer than 40 cards, add some
+    before your next duel.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -131,9 +143,10 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`, with the summon rules, the pack
-  viewer, Found in, the second decks, their 10th-win lines and the CPU deck tuning; the user ran it in
-  Delta. Earlier versions:
+- `gods-3t-fx.gba`: SHA-1 `9372e6d50a857a1131e0c72785f5ae16bf53a486`, with the summon rules, the pack
+  viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning and the Ritual monsters in the
+  Extra Deck. Earlier versions:
+  - `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`: before the Extra Deck rituals; the user ran it in Delta;
   - `8710dd2f4335187d5254c7a44ede052e11af77a1`: before the deck tuning; the user ran it in Delta;
   - `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`: the second decks without the new lines;
   - `27007baa47952ebfe051c3f1eaa399eef011ef99`: before the second decks; the user checked the summon rules on
@@ -327,6 +340,44 @@ Sisters from the deck, and Mai's deck had none, so the combo could never finish.
 **The data:** `DECK_TUNING_3T` lists each changed card's count before and after, per deck. A deck is changed
 only when it holds the "before" counts, and skipped when it already holds the "after" ones. The new lists are
 sorted, like the original ones.
+
+### How the Extra Deck rituals work (gods-3t-fx)
+The original game has one rule for the Fusion Deck: a card goes there when its kind is Fusion. It applies that
+rule in a dozen places, from Deck Edit to a monster bounced in a duel. `scripts/patch_extra_deck_rituals.py`
+copies `src/extra_deck_rituals.c` into the decomp as a new unit, and 16 anchored edits in 12 files make each
+of those places ask `IsExtraDeckMonster` instead: a Fusion or Ritual monster, never a God (Obelisk's code
+kind is Ritual, for its blue frame).
+
+```
+ DECK EDIT                                IN A DUEL
+ Trunk ── To Main Deck ─┬─ Fusion or Ritual ─► Fusion Deck ─┬─ Polymerization ─────► field (Fusion only)
+                        └─ anything else ────► Main Deck    ├─ Ritual Magic card ──► field (its monster;
+ To Side Deck: refused for Fusion and Ritual                │   Tributes from hand or field, as before)
+ CPU deck lists: the same split when they load              ├─ Cyber-Stein ────────► field (Fusion only)
+                                                            └─ Gale Dogra ─────────► Graveyard (any)
+ A Fusion or Ritual monster that would go to the hand or the Deck goes back to the Fusion Deck.
+```
+
+| Where | What the edits do |
+|---|---|
+| `IsExtraDeckMonster` (new) | Fusion or Ritual monster, not a God: the one test for "lives in the Fusion Deck" |
+| Deck Edit (`DeckEdit_IsFusionMonster`, the two copy counts in the card move, the Side Deck command) | files a Ritual monster in the Fusion Deck (its 20-card limit), counts its copies there, refuses it the Side Deck |
+| `AddCardNumberToDeckTop` | the CPU's deck lists put Ritual monsters in its Fusion Deck |
+| `IsFusionMonster`, `AddCardToHand`, `DuelCmd_ReturnGraveyardCardToHand` | a Ritual monster going to the hand or the Deck goes to the Fusion Deck, and its card flies there |
+| `HandHasRitualMonster`, `EffectRitualSummonResolve` | the Ritual Magic cards look for their monster in the Fusion Deck, then in the hand as before, and take it from there |
+| Cyber-Stein (`EffectCyberSteinPrepare`, `EffectCyberSteinResolve`, its list in `CollectEffectTargets`) | Fusion monsters only; without one it can't be activated |
+| Senju of the Thousand Hands (`CollectEffectTargets`, `EffectAddRitualCardToHandResolve`) | lists the Deck's Ritual Magic cards with Sonic Bird's prompt; `apply_gods.py --text 3` rewrites its card text |
+| `GameInit` | right after the save is read, an old save's Ritual monsters move from its Deck to its Fusion Deck, or to the Trunk when it's full; the checksum is updated so Continue still shows. A save with a bad checksum (none yet) is left alone |
+
+**The CPU:** its spell logic asks the same activation check, so it plays a Ritual Magic card when the monster
+is in its Fusion Deck and its hand and field hold enough levels. Two habits come from the original AI. When it
+plans an attack, it Normal Summons first, which ends its Main Phase 1, and its Main Phase 2 plays no spells:
+so it plays a Ritual Magic card on a turn it doesn't summon to attack. And for the Tributes it takes its
+highest-level card each time. It now also avoids tributing a Ritual monster for a Tribute Summon, as it
+already did a Fusion monster (`IsFusionMonster`).
+
+**The CPU decks:** Bakura's and Mako's main decks are 39 cards now, and Pegasus's 39 too (41 minus his two
+Relinquished). The deck region is full, so nothing was added; a 39-card deck runs out a turn sooner.
 
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
@@ -529,6 +580,33 @@ find.
 The behaviour checks pass on the old build too: the CPU could always play these cards; its old decks just
 didn't hold them. On a real device, the user tested the tuned build in Delta on iOS: it works.
 
+The Ritual monsters in the Extra Deck have their own suite, `--extra-deck-rituals` (same control). It also makes
+the second-deck and tuning checks expect the CPU's rituals in its Fusion Deck. `effects.lua` stages both Fusion
+Decks (`P_FUSION`, `C_FUSION`) and the player's deck (`P_DECK`); `deck_edit.lua` reads the saved Deck, Side
+Deck, Fusion Deck and Trunk sizes; `save_migration.lua` puts cards in the save, writes it to SRAM and resets,
+so the game boots from it.
+
+| Check (`gods-3t-fx.gba`) | Extra Deck build | Build without it |
+|---|---|---|
+| Bakura's Dokurorider, Mako's Fortress Whale and Pegasus's two Relinquished load into the CPU's Fusion Deck | pass | fails (in the deck) |
+| Deck Edit: To Main Deck files Black Luster Soldier in the Fusion Deck; To Trunk takes it back out | pass | fails (the Main Deck) |
+| Deck Edit: Black Luster Soldier can't go to the Side Deck | pass | fails (it goes) |
+| Deck Edit: a Normal monster still goes to the Side Deck, a God to the Main Deck | pass | pass |
+| A save with three rituals in its Deck boots with them in its Fusion Deck, and a valid checksum | pass | fails (still in the Deck) |
+| The same with a full Fusion Deck: the ritual goes to the Trunk | pass | fails |
+| A save without rituals boots unchanged | pass | pass |
+| Black Illusion Ritual summons Relinquished from the Fusion Deck, tributing a monster | pass | fails (can't be activated) |
+| Black Illusion Ritual with Relinquished in the hand, as before | pass | pass |
+| The CPU's Black Illusion Ritual summons Relinquished from its Fusion Deck | pass | fails |
+| Black Luster Soldier bounced by Hane-Hane goes back to the Fusion Deck | pass | fails (to the hand) |
+| Senju of the Thousand Hands adds a Ritual Magic card; its new text is in the ROM | pass | fails |
+| Cyber-Stein with only Black Luster Soldier in the Fusion Deck can't be activated | pass | fails (it pays 5000 LP and summons it) |
+| Cyber-Stein with Black Luster Soldier and Blue-Eyes Ultimate Dragon summons Blue-Eyes Ultimate Dragon | pass | fails (it lists Black Luster Soldier first) |
+
+Also played for the Extra Deck: the summon and the bounce on screenshots (the card flies to and from the
+Fusion Deck pile), and Deck Edit's statement, which counts the Main Deck at 40 and the Fusion Deck at 1. On
+the old build, To Trunk does nothing for a ritual in the saved Fusion Deck.
+
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the
 10th-win lines) in Delta on iOS: it works. Not yet checked in the emulator: reaching 10 wins by playing (the
@@ -548,8 +626,8 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
-- **The summon rules, the pack viewer, Found in, the second decks and the deck tuning are only in
-  `gods-3t-fx`.** The pack list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
+- **The summon rules, the pack viewer, Found in, the second decks, the deck tuning and the Extra Deck rituals
+  are only in `gods-3t-fx`.** The pack list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
   those pick-screen packs, so a card that comes only from an event, a trade or a password says it isn't in
   them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
@@ -563,6 +641,12 @@ Also checked:
   Negate Attack, Invader of the Throne, Trap Master, Mask of Darkness and the other swapped-in cards that have a
   rule in its code (they are in its play lists, flip plans or Trap conditions); only the cards listed in the
   verification table were played in scripted turns.
+- **Extra Deck rituals and other builds:** a save from `gods-3t-fx` keeps its Ritual monsters in the Fusion
+  Deck. The other builds, and the original game, can't summon them from there or move them out (Deck Edit
+  counts no copies of them in the Deck). Move them to the Trunk before you take the save to another build.
+- **The Fusion Deck's 20 cards are shared:** Fusion and Ritual monsters together.
+- **The CPU's rituals depend on its turn plan:** it plays a Ritual Magic card on a turn it doesn't Normal
+  Summon to attack (the original AI's order), and Bakura's, Mako's and Pegasus's main decks are 39 cards.
 - **The 10th-win line comes once:** it is shown when your record against the duelist goes from 9 to 10. A
   save that is already past 10 wins gets the second deck without the line. A record only grows, so once a
   duelist has 10 wins they keep the second deck.

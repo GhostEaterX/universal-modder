@@ -2,13 +2,14 @@
 -- Edit builds its lists, and logs the Trunk list as Deck Edit shows it (after its filter and sort) whenever it
 -- changes:
 --   TRUNK    card IDs, comma separated, one copy each
--- Log lines: "trunk n=N ids=a,b,c,..." with the first 12 card IDs of the shown list, and "detail id=ID found=N"
--- for a Card Detail (below).
+-- Log lines: "trunk n=N ids=a,b,c,..." with the first 12 card IDs of the shown list, "saved deck=D side=S
+-- fusion=F trunk=T" with the sizes of the saved Deck, Side Deck, Fusion Deck and Trunk, and "detail id=ID
+-- found=N" for a Card Detail (below).
 local SAVE = 0x02011C20
 local DECK_EDIT = 0x0201DB20                       -- gDeckEdit
 local SHOWN = DECK_EDIT + 0x644 + 0x728            -- lists[1].trunk: the filtered and sorted Trunk list
 local SHOWN_COUNT = DECK_EDIT + 0x1494 + 3 * 2     -- listCount[1][DECKEDIT_LIST_TRUNK]
-local frame, last = 0, ""
+local frame, last, lastSaved = 0, "", ""
 
 local function env(name)
     local v
@@ -55,6 +56,12 @@ callbacks:add("frame", function()
     if s ~= last then
         console:log(string.format("f%d %s", frame, s))
         last = s
+    end
+    local saved = string.format("saved deck=%d side=%d fusion=%d trunk=%d", emu:read16(SAVE + 0x20C8),
+        emu:read16(SAVE + 0x20CA), emu:read16(SAVE + 0x20CC), emu:read16(SAVE + 0x20C6))
+    if saved ~= lastSaved then
+        console:log(string.format("f%d %s", frame, saved))
+        lastSaved = saved
     end
     logDetail(function(line) console:log(string.format("f%d %s", frame, line)) end)
 end)

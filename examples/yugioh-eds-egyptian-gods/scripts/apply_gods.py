@@ -14,8 +14,10 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
                                             --text 3, also the CPU deck tuning (DECK_TUNING_3T)
   - cards/descriptions.json                 with --text 2|3 (the effects builds): the Gods' effect text in
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
-                                            the summon rules that patch_god_rules.py builds. Each text is a
-                                            fixed 480-byte record, so nothing moves
+                                            the summon rules that patch_god_rules.py builds, and Senju of the
+                                            Thousand Hands searching a Ritual Magic card
+                                            (patch_extra_deck_rituals.py). Each text is a fixed 480-byte
+                                            record, so nothing moves
   - text/dialogue.json                      with --text 3: a new last page for the 10th-win lines of the
                                             five duelists that switch to their second deck then
                                             (patch_second_decks.py). Each record is a fixed 0x304 bytes
@@ -231,6 +233,11 @@ DECK_TUNING_3T = {
     ],
 }
 DIALOGUE_TEXT = 0x300               # text bytes per dialogue record, NUL included
+# The three-Tribute effects build also moves the Ritual monsters to the Fusion Deck (patch_extra_deck_rituals.py),
+# so Senju of the Thousand Hands searches a Ritual Magic card instead of a Ritual monster: its new text.
+SENJU = (1109, "Senju of the Thousand Hands")     # card number, name
+SENJU_TEXT_3T = ("When this card is Normal Summoned or Flip Summoned, you can add 1 Ritual Magic card from your "
+                 "Deck to your hand. Then shuffle your Deck.")
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
 DECK_SWAPS = {
@@ -402,6 +409,15 @@ def main():
             if data[card_id] != text:
                 changes.append(f"text {name}: {len(text)} characters")
                 data[card_id] = text
+        if args.text == 3:
+            number, name = SENJU
+            card_id = json.loads((assets / "cards" / "number_to_id.json").read_text(encoding="utf-8"))[number]
+            names = json.loads((assets / "cards" / "names.json").read_text(encoding="utf-8"))
+            if names[card_id] != name:
+                sys.exit(f"card number {number} is {names[card_id]!r}, expected {name!r} (not the USA ROM?)")
+            if data[card_id] != SENJU_TEXT_3T:
+                changes.append(f"text {name}: searches a Ritual Magic card")
+                data[card_id] = SENJU_TEXT_3T
         if not args.check:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 

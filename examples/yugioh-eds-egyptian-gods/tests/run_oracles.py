@@ -5,7 +5,7 @@
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
     run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
-                   --second-decks --deck-tuning [--control gods-3t.gba]
+                   --second-decks --deck-tuning --extra-deck-rituals [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -31,7 +31,13 @@ checks also run on a control ROM, where each check says what must happen there:
   - with --deck-tuning, the same control for the CPU deck tuning: each tuned deck must load card for card as
     in the checkout's deck_lists.json (the control has the old decks), and the CPU must play the cards the
     tuning brings in that it didn't hold before (recruiters, Elegant Egotist, Toon Mermaid, Fissure), which
-    it does on both.
+    it does on both;
+  - with --extra-deck-rituals, the same control for the Ritual monsters in the Extra Deck: the CPU's rituals
+    load into its Fusion Deck (the decks of the two suites above expect that too), Deck Edit files them there
+    and refuses them the Side Deck, a save from before moves them there at boot (save_migration.lua), the
+    Ritual Magic cards summon them from there for both players, a bounced one goes back there, Senju searches
+    a Ritual Magic card and Cyber-Stein keeps to Fusion monsters; all of that fails on the control, and the
+    regressions (a ritual from the hand, a Normal monster to the Side Deck, a save without rituals) pass.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -266,10 +272,11 @@ def rules_suite():
     ]
 
 
-def cpu_deck_re(which, duelist):
+def cpu_deck_re(which, duelist, rituals=False):
     """The CPU's deck as npc_deck.lua logs it, from the checkout's deck_lists.json: deck `duelist` of
-    "opponent_decks" (the first decks) or "alternate_decks" (the second decks), Fusion monsters in the Fusion
-    Deck. No Tier 1 deck goes over the ban list, so RemoveOverLimitDeckCards takes nothing out."""
+    "opponent_decks" (the first decks) or "alternate_decks" (the second decks), Fusion monsters (and with
+    rituals, the Extra Deck rituals build, Ritual monsters) in the Fusion Deck. No Tier 1 deck goes over the ban
+    list, so RemoveOverLimitDeckCards takes nothing out."""
     def regex(decomp):
         assets = decomp / "assets"
         with open(assets / "tables/deck_lists.json") as f:
@@ -282,7 +289,8 @@ def cpu_deck_re(which, duelist):
         for number, _ in cards:
             card = number_to_id[number]
             s = stats[card]
-            (fusion if int(s["type"]) <= 20 and s["kind"] == "2" else deck).append(card)
+            extra = int(s["type"]) <= 20 and s["kind"] in (("2", "3") if rituals else ("2",))
+            (fusion if extra else deck).append(card)
         line = lambda name, ids: re.escape(f"{name}: {' '.join(map(str, sorted(ids)))}")
         return line("sorted ids", deck) + r"\n\[lua\] " + line("fusion ids", fusion) + r"(\n|$)"
     return regex
@@ -303,9 +311,10 @@ def dialogue_re(event, wins):
     return regex
 
 
-def second_decks_suite():
+def second_decks_suite(rituals=False):
     deck = lambda which, opp, wins: dict(script="npc_deck.lua", state="main_menu", frames=1500, keys=NPC_KEYS,
-                                         env={"OPP": str(opp), "WINS": str(wins)}, regex=cpu_deck_re(which, opp))
+                                         env={"OPP": str(opp), "WINS": str(wins)},
+                                         regex=cpu_deck_re(which, opp, rituals))
     return [check(f"second decks: {name} at 10 wins plays it", **deck("alternate_decks", opp, 10))
             for opp, name in TIER1] + [
         check("second decks: Tea at 9 wins keeps her deck", control="passes", **deck("opponent_decks", 2, 9)),
@@ -330,7 +339,7 @@ DUELISTS = {1: "Yugi", 2: "Tea", 3: "Joey", 4: "Tristan", 5: "Bakura", 6: "Rex",
 RECRUIT_KEYS = BATTLE_KEYS + "; 1300-1600/60 A"
 
 
-def deck_tuning_suite():
+def deck_tuning_suite(rituals=False):
     sys.path.insert(0, str(HERE.parent / "scripts"))
     from apply_gods import DECK_TUNING_3T, O
     tuned = sorted(i for table, i in DECK_TUNING_3T if table == O)
@@ -338,7 +347,7 @@ def deck_tuning_suite():
         f"deck tuning: the CPU's {name} recruits", E, "duel_turn2", 1700, RECRUIT_KEYS,
         {"P_ZONES": "0:82", "C_ZONES": f"0:{card}", "C_DECK": str(target)}, rf"C {target},0,0,0,0", control="passes")
     return [check(f"deck tuning: {DUELISTS[i]}'s deck, card for card", "npc_deck.lua", "main_menu", 1500, NPC_KEYS,
-                  {"OPP": str(i)}, cpu_deck_re("opponent_decks", i)) for i in tuned] + [
+                  {"OPP": str(i)}, cpu_deck_re("opponent_decks", i, rituals)) for i in tuned] + [
         recruit("Giant Rat", 272, 418),             # Little D
         recruit("Mother Grizzly", 490, 545),        # Penguin Knight
         recruit("Flying Kamakiri #1", 240, 316),    # Harpie Lady
@@ -351,6 +360,77 @@ def deck_tuning_suite():
         check("deck tuning: the CPU's Fissure destroys Blue-Eyes", E, "duel_main1", 4000, END_TURN_KEYS,
               {"P_ZONES": "0:82", "C_HAND": "230,1,1,1,1", "P_HAND": "1,1,1,1,1"},
               r"P 0,0,0,0,0 C [^\n]*grave 1 1", control="passes"),
+    ]
+
+
+# duel_main1, a hand of Black Illusion Ritual -> Activate, OK, the chain resolves, Tribute zone 0's monster
+# (the cursor starts there), Attack Position
+RITUAL_KEYS = "15 A; 45 RIGHT; 55 RIGHT; 70 A; 250 A; 400 A; 750 A; 950 A"
+SENJU_KEYS = FISH_KEYS + "; 950 A; 1100 A; 1200 LEFT; 1220 A; 1370 A"    # Yes, OK, the list's designate icon, card 1
+# duel_main1 -> cursor up to zone 0, its menu, Activate; through the chain and Cyber-Stein's prompt to its list
+CYBER_STEIN_KEYS = "20 UP; 40 UP; 70 A; 120 RIGHT; 180 RIGHT; 240 A; 450 A; 600 A; 750 A; 900 A"
+CYBER_STEIN_PICK_KEYS = CYBER_STEIN_KEYS + "; 1000 LEFT; 1020 A; 1170 A"   # the designate icon, the first card
+# main_menu -> Deck Edit (the Trunk's first card), the command bar: To Main Deck / To Side Deck
+TO_DECK_KEYS = "0 DOWN; 15 DOWN; 30 A; 200 A; 260 RIGHT; 300 A"
+TO_SIDE_KEYS = "0 DOWN; 15 DOWN; 30 A; 200 A; 260 RIGHT; 300 RIGHT; 340 A"
+# then R to the Deck list, down to the card (5th by name in the main_menu save), To Trunk
+BACK_TO_TRUNK_KEYS = TO_DECK_KEYS + "; 450 R; 550 DOWN; 580 DOWN; 610 DOWN; 640 DOWN; 700 RIGHT; 750 A"
+HANE_KEYS = BATTLE_KEYS + "; 1300-1900/60 A"    # duel_turn2: attack the CPU's zone 0, then A through the chain
+BLS, MOBC, RELINQUISHED, BLACK_LUSTER_RITUAL, BLACK_ILLUSION_RITUAL = "71", "433", "582", "70", "69"
+FULL_FUSION_DECK = "10,10,10,14,14,14,28,28,28,42,42,42,46,46,46,63,63,63,89,89"   # 20 Fusion monsters
+
+
+def extra_deck_rituals_suite():
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from apply_gods import SENJU_TEXT_3T
+    fusion_deck = lambda name, opp, ids: check(
+        f"Extra Deck: {name}'s rituals load into his Fusion Deck", "npc_deck.lua", "main_menu", 1500, NPC_KEYS,
+        {"OPP": str(opp)}, rf"fusion ids: {ids}(\n|$)")
+    return [
+        fusion_deck("Bakura", 5, "176"),                # Dokurorider
+        fusion_deck("Mako", 9, "245"),                  # Fortress Whale
+        fusion_deck("Pegasus", 23, "582 582"),          # two Relinquished
+        check("Extra Deck: Deck Edit files a ritual in the Fusion Deck", DE, "main_menu", 700, TO_DECK_KEYS,
+              {"TRUNK": BLS}, r"saved deck=40 side=0 fusion=1 trunk=0"),
+        check("Extra Deck: and takes it back out to the Trunk", DE, "main_menu", 1100, BACK_TO_TRUNK_KEYS,
+              {"TRUNK": BLS}, r"fusion=1 trunk=0\n[\s\S]*saved deck=40 side=0 fusion=0 trunk=1"),
+        check("Extra Deck: no ritual in the Side Deck", DE, "main_menu", 700, TO_SIDE_KEYS, {"TRUNK": BLS},
+              r"side=1", must=False),
+        check("Extra Deck: a Normal monster still goes to the Side Deck", DE, "main_menu", 700, TO_SIDE_KEYS,
+              {"TRUNK": "1"}, r"saved deck=40 side=1 fusion=0", control="passes"),
+        check("Extra Deck: a God still goes to the Main Deck", DE, "main_menu", 700, TO_DECK_KEYS, {"TRUNK": "817"},
+              r"saved deck=41 side=0 fusion=0 trunk=0", control="passes"),
+        check("Extra Deck: an old save's rituals move to its Fusion Deck", "save_migration.lua", "main_menu", 400,
+              "", {"DECK_ADD": ",".join((BLS, MOBC, RELINQUISHED))},
+              r"save deck=(\d+,){39}\d+ fusion=71,433,582 trunk=0 checksum=ok\n"
+              r"\[lua\] copies 71=0/1/0 433=0/1/0 582=0/1/0$"),
+        check("Extra Deck: ... to the Trunk when its Fusion Deck is full", "save_migration.lua", "main_menu", 400,
+              "", {"DECK_ADD": BLS, "FUSION_ADD": FULL_FUSION_DECK},
+              rf"save deck=(\d+,){{39}}\d+ fusion={FULL_FUSION_DECK} trunk=1 checksum=ok\n"
+              r"\[lua\] copies 71=0/0/1$"),
+        check("Extra Deck: a save without rituals is left alone", "save_migration.lua", "main_menu", 400, "",
+              {"DECK_ADD": "1"}, r"save deck=(\d+,){40}1 fusion= trunk=0 checksum=ok\n\[lua\] copies 1=1/0/0$",
+              control="passes"),
+        check("Extra Deck: Ritual Summon from the Fusion Deck", E, "duel_main1", 1200, RITUAL_KEYS,
+              {"P_HAND": SIX(BLACK_ILLUSION_RITUAL), "P_ZONES": "0:1", "P_FUSION": RELINQUISHED},
+              r"P 582,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 5 5 grave 2 0 links P\{\} C\{\} fusion P\{\} C\{\}"),
+        check("Extra Deck: a ritual in the hand still works", E, "duel_main1", 1200, RITUAL_KEYS,
+              {"P_HAND": "582," + ",".join([BLACK_ILLUSION_RITUAL] * 5), "P_ZONES": "0:1"},
+              r"P 582,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 4 5 grave 2 0", control="passes"),
+        # The CPU plays its spells only on a turn it doesn't Normal Summon to attack first: no Level 4 or lower.
+        check("Extra Deck: the CPU's Ritual Summon from its Fusion Deck", E, "duel_main1", 3000, END_TURN_KEYS,
+              {"C_HAND": "69,82,82,82,82", "C_FUSION": RELINQUISHED, "P_HAND": SIX("1")},
+              r"C 582,0,0,0,0 [^\n]*fusion P\{\} C\{\}"),
+        check("Extra Deck: a bounced ritual goes back to the Fusion Deck", E, "duel_turn2", 2200, HANE_KEYS,
+              {"P_ZONES": "0:" + BLS, "C_ZONES": "0:312:s"},        # the CPU's set Hane-Hane
+              r"P 0,0,0,0,0 C 0,0,0,0,0 LP 7900 8000 hand 6 5 grave 1 \d links P\{\} C\{\} fusion P\{71\}"),
+        check("Extra Deck: Senju adds a Ritual Magic card", E, "duel_main1", 1700, SENJU_KEYS,
+              {"P_HAND": SIX("621"), "P_DECK": BLACK_LUSTER_RITUAL}, r"P 621,0,0,0,0 C 0,0,0,0,0 LP 8000 8000 hand 6 5"),
+        check("Extra Deck: Senju's card text", None, None, 0, None, {}, SENJU_TEXT_3T.encode("ascii")),
+        check("Extra Deck: Cyber-Stein can't take a ritual", E, "duel_main1", 1800, CYBER_STEIN_KEYS,
+              {"P_ZONES": "0:137", "P_FUSION": BLS, "P_HAND": SIX("1")}, r"LP 3000", must=False),
+        check("Extra Deck: Cyber-Stein takes the Fusion monster", E, "duel_main1", 1800, CYBER_STEIN_PICK_KEYS,
+              {"P_ZONES": "0:137", "P_FUSION": BLS + ",81", "P_HAND": SIX("1")}, r"P 137,81,0,0,0"),
     ]
 
 
@@ -467,6 +547,8 @@ def main():
     ap.add_argument("--god-rules", action="store_true", help="the ROM has the Gods' summon rules (gods-3t-fx)")
     ap.add_argument("--second-decks", action="store_true", help="the ROM has the second decks (gods-3t-fx)")
     ap.add_argument("--deck-tuning", action="store_true", help="the ROM has the CPU deck tuning (gods-3t-fx)")
+    ap.add_argument("--extra-deck-rituals", action="store_true",
+                    help="the ROM has the Ritual monsters in the Extra Deck (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -480,12 +562,16 @@ def main():
     if args.god_rules:
         checks = checks + rules_suite()
         tag += "gr"
+    rituals = args.extra_deck_rituals
     if args.second_decks:
-        checks = checks + second_decks_suite()
+        checks = checks + second_decks_suite(rituals)
         tag += "sd"
     if args.deck_tuning:
-        checks = checks + deck_tuning_suite()
+        checks = checks + deck_tuning_suite(rituals)
         tag += "dt"
+    if rituals:
+        checks = checks + extra_deck_rituals_suite()
+        tag += "edr"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

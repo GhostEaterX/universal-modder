@@ -15,6 +15,8 @@
 #     and a last page for their 10th-win lines that says so;
 #   - the CPU deck tuning: the cards the CPU can never play, and some generic ones, give way to themed cards it
 #     does play (apply_gods.py --text 3).
+#   - the Ritual monsters in the Extra Deck (EDS's Fusion Deck): Deck Edit and the CPU's decks put them there,
+#     the Ritual Magic cards summon them from there, and Senju of the Thousand Hands searches a Ritual Magic card.
 # The .bps is the only thing to share. All four variants can live in the same work dir.
 #
 # Needs git, python3, and eds-decomp's native toolchain on PATH: run eds-decomp's tools/setup_native.sh once,
@@ -53,7 +55,7 @@ cp "$ROM" "$WORK/vanilla/roms/base_eng.gba"
 (cd "$WORK/vanilla" && tools/dr make setup)
 
 # 3. The data: stats, passwords, ban list, NPC decks (and with --effects the Gods' card text; for gods-3t-fx
-#    also the 10th-win lines). Both trees get the same assets.
+#    also the 10th-win lines, the deck tuning and Senju's text). Both trees get the same assets.
 # shellcheck disable=SC2086
 python3 "$HERE/apply_gods.py" "$WORK/vanilla" $TEXT
 rm -rf "$WORK/$MOD/assets" "$WORK/$MOD/roms"
@@ -64,7 +66,8 @@ ln -sf roms/base_eng.gba "$WORK/$MOD/baserom.gba"
 # 4. The code: Divine counts as a monster type, Obelisk stops being a Ritual; optionally three Tributes and
 #    the Gods' effects (two new units, src/god_effects.c and data/god_effects_table.s), and for gods-3t-fx
 #    the pack viewer (src/pack_viewer.c, with its odds table generated from your booster_packs.json), the
-#    Gods' summon rules (src/god_rules.c) and the second decks (src/second_decks.c).
+#    Gods' summon rules (src/god_rules.c), the second decks (src/second_decks.c) and the Ritual monsters in the
+#    Extra Deck (src/extra_deck_rituals.c).
 python3 "$HERE/patch_source.py" "$WORK/$MOD"
 if [ "$TRIBUTES" = 3 ]; then python3 "$HERE/patch_three_tributes.py" "$WORK/$MOD"; fi
 if [ "$EFFECTS" = 1 ]; then python3 "$HERE/patch_god_effects.py" "$WORK/$MOD"; fi
@@ -72,6 +75,7 @@ if [ "$TRIBUTES" = 3 ] && [ "$EFFECTS" = 1 ]; then
     python3 "$HERE/patch_pack_viewer.py" "$WORK/$MOD"
     python3 "$HERE/patch_god_rules.py" "$WORK/$MOD"
     python3 "$HERE/patch_second_decks.py" "$WORK/$MOD"
+    python3 "$HERE/patch_extra_deck_rituals.py" "$WORK/$MOD"
 fi
 
 # 5. Build both. The vanilla tree keeps the original layout; the mod tree only supplies objects.

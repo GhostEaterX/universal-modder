@@ -415,3 +415,47 @@
 
 ## 2026-10-15: deck tuning on a real device
 - **Delta on iOS (user's test):** `gods-3t-fx` `2082fb6f...` (the tuned CPU decks) works.
+
+## 2026-10-15: Ritual monsters in the Extra Deck (in `gods-3t-fx`)
+- **User's ask:** see how the Extra Deck works and what goes in it; then make Ritual monsters belong there
+  instead of in the Main Deck. The user approved the plan (Senju searches a Ritual Magic card, Cyber-Stein
+  keeps to Fusion monsters, old saves are moved).
+- **Found:**
+  - EDS's Extra Deck is the Fusion Deck: `gSaveData.fusionDeck[20]` (+0x209E) and the duel's
+    `fusionDeck[80]` (+0xA44, `fusionCount` +5). It takes Fusion monsters only (52 card IDs), outside the
+    40-60-card Deck, never drawn, and Deck Edit refuses them the Side Deck.
+  - "Fusion Deck or not" is decided by the card kind (stats bits 18-19) in about a dozen places, each with its
+    own inline copy of the kind classifier: Deck Edit's filing, its copy counts and its Side Deck command;
+    `AddCardNumberToDeckTop` for the CPU's lists; `IsFusionMonster` (bounce, return to the Deck, their
+    animations), `AddCardToHand` and the graveyard-to-hand animation.
+  - The Ritual Magic cards (15 recipes in `gRitualRecipes`, the Tributes' levels at least the monster's
+    level) need the monster in the hand: `HandHasRitualMonster` in the prepare and the resolve, and the
+    resolve's take step copies it out of the hand. Polymerization already takes its monster out of the Fusion
+    Deck with `DUEL_CMD_REMOVE_CARD_FROM_FUSION_DECK`, a card word in two halves.
+  - Three CPU decks hold rituals: Bakura (Dokurorider), Mako (Fortress Whale), Pegasus (two Relinquished).
+  - Fusion Deck users that aren't Polymerization: Cyber-Stein and Gale Dogra list every card of it, and
+    Senju of the Thousand Hands searches the Deck for a Ritual monster. Sonic Bird already searches a Ritual
+    Magic card, with its own prompt string.
+- **The change:** a new unit, `src/extra_deck_rituals.c`, and 16 edits in 12 files
+  (`patch_extra_deck_rituals.py`). `IsExtraDeckMonster` (a Fusion or Ritual monster, not a God, from the stats:
+  Obelisk's code kind is Ritual only for its frame) replaces the Fusion-kind test where a card is filed. The
+  Ritual Magic cards look in the Fusion Deck first and keep the hand path. Cyber-Stein counts and lists Fusion
+  monsters only. Senju lists Ritual Magic cards with Sonic Bird's prompt; its card text is new
+  (`apply_gods.py --text 3`).
+- **Old saves:** `GameInit` reads the save from SRAM and nothing checks it until the title screen asks for
+  Continue (`IsSaveChecksumValid`). Right after the read, `MoveSavedRitualMonsters` moves the saved Deck's
+  Ritual monsters to the saved Fusion Deck (the trunk when it's full or at the copy limit) and updates the
+  checksum, so Continue still shows. A save with a bad checksum is left alone.
+- **Gotcha, `patch_source.py` on a rerun:** it rewrites every `<= CARD_TYPE_REPTILE` / `> CARD_TYPE_REPTILE`
+  in `src/` and stops when the count isn't 85. A new unit with such a test would break a rerun on a patched
+  tree, so `IsExtraDeckMonster` uses `CARD_TYPE_IS_MONSTER(type) && type != CARD_TYPE_DIVINE`.
+- **Gotcha, the CPU and its spells:** the first CPU ritual test never played the Ritual Magic card, on the old
+  build too with the monster in hand. A trace of `gAiState` (0x02015EF0) showed why: when the CPU plans an
+  attack it Normal Summons in `AI_MAIN_SUMMON`, which ends Main Phase 1 (step 2 -> 3), and Main Phase 2 plays
+  no spells. With only Level 8 monsters in hand it can't summon, reaches `AiPlaySpells`, and plays the ritual.
+- **Harness:**
+  - `effects.lua` takes `P_DECK`, `P_FUSION` and `C_FUSION`, and logs both Fusion Decks.
+  - `deck_edit.lua` logs the saved Deck, Side Deck, Fusion Deck and Trunk sizes.
+  - `save_migration.lua` (new): from `main_menu`, adds cards to the saved Deck and Fusion Deck, fixes the
+    checksum, writes the save to SRAM (bus writes to 0x0E000000 work in mGBA's Lua) and calls `emu:reset()`,
+    so `GameInit` boots from that save.
