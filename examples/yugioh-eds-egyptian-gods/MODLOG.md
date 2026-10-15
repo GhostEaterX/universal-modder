@@ -486,3 +486,6 @@
   check covers it (it passes on the old build too: the CPU could always fuse).
 - **Results:** the `gods-3t-fx` suite is 125/125 against `gods-3t`; `gods-3t-fx` is `27e5fdee...` from two fresh
   work dirs.
+
+## 2026-10-15: Kaiba's Polymerization on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `27e5fdee...` works.

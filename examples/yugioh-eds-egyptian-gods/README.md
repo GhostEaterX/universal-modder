@@ -147,7 +147,7 @@ tested ROMs byte for byte:
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
 - `gods-3t-fx.gba`: SHA-1 `27e5fdeeb39f652fc4c15f2103f57695e467a827`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization)
-  and the Ritual monsters in the Extra Deck. Earlier versions:
+  and the Ritual monsters in the Extra Deck; the user ran it in Delta. Earlier versions:
   - `9372e6d50a857a1131e0c72785f5ae16bf53a486`: before Kaiba's Polymerization; the user ran it in Delta;
   - `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`: before the Extra Deck rituals; the user ran it in Delta;
   - `8710dd2f4335187d5254c7a44ede052e11af77a1`: before the deck tuning; the user ran it in Delta;

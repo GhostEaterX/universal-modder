@@ -747,8 +747,14 @@
       }
     ],
     "not_verified": [
-      "a real device",
       "Kaiba drawing into three Blue-Eyes in a played duel (rare with three in 40 cards)"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (27e5fdee...)",
+      "result": "works"
+    }
   }
 }
