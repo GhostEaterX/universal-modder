@@ -376,6 +376,9 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 32. **The save is read once, at boot.** EDS copies SRAM to `gSaveData` in `GameInit`, and only the title
     screen checks it (the checksum decides whether Continue shows). A one-time save fix belongs right after
     the read, and it must update the checksum or Continue disappears.
+33. **A frame can end in the middle of a routine.** The CPU's deck shuffle runs across a few frames, so a
+    frame-end snapshot can catch a swap half done (one card in two slots). New hooks shift the timing enough
+    to expose it. Read a list once it holds the same cards two frames in a row.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

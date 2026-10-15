@@ -1,7 +1,8 @@
 -- Oracle 1: does the CPU's duel deck contain its God? Which deck did the CPU get?
 -- Forces the Campaign opponent (gMain.opponent) to OPP, taps into the duel, and once Campaign_SetupDuel has
 -- loaded the CPU's deck (LoadOpponentDeck, which also runs RemoveOverLimitDeckCards) logs every card ID in
--- it. With WINS, the player's record against OPP (gSaveData.duelRecords[OPP].wins) is set to WINS first.
+-- it. The shuffle that follows runs across a few frames, and a frame can end in the middle of a swap (one card
+-- briefly in two slots), so the log waits for two frames with the same cards. With WINS, the player's record against OPP (gSaveData.duelRecords[OPP].wins) is set to WINS first.
 -- Run from the main_menu state with the duel_start inputs:
 --   OPP=16 tools/emu.py lua npc_deck.lua --rom PATH --state main_menu --frames 1500 --keys "0 A; 30-1490/15 A"
 -- Log lines: the deck in deck order, "sorted ids: ..." (the deck's card IDs, ascending) and "fusion ids: ..."
@@ -14,7 +15,7 @@ local OPP_ADDR = 0x030048B0          -- gMain+0x4870: bit 0 firstPlayer, bits 1-
 local P1 = 0x020192E4 + 0xD64        -- gDuelPlayers[1] (0xD64 bytes per player)
 local DECK, FUSION = 0x7C4, 0xA44     -- struct DuelCard deck[80], fusionDeck[80]; card ID = word & 0xFFF
 local GODS = { [817] = "Obelisk", [818] = "Slifer", [819] = "Ra" }
-local done = false
+local done, prev = false, nil
 
 callbacks:add("frame", function()
     if done then return end
@@ -24,6 +25,15 @@ callbacks:add("frame", function()
     if WINS then emu:write16(RECORD, (emu:read16(RECORD) & ~0x7FF) | WINS) end
     local n, f = emu:read8(P1 + 3), emu:read8(P1 + 5)
     if n == 0 then return end
+    local words = {}
+    for i = 0, n - 1 do words[#words + 1] = emu:read32(P1 + DECK + i * 4) & 0xFFF end
+    for i = 0, f - 1 do words[#words + 1] = emu:read32(P1 + FUSION + i * 4) & 0xFFF end
+    table.sort(words)
+    local key = n .. ":" .. f .. ":" .. table.concat(words, ",")
+    if key ~= prev then
+        prev = key
+        return
+    end
     local ids, gods = {}, {}
     for i = 0, n - 1 do
         local id = emu:read32(P1 + DECK + i * 4) & 0xFFF

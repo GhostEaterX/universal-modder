@@ -459,3 +459,9 @@
   - `save_migration.lua` (new): from `main_menu`, adds cards to the saved Deck and Fusion Deck, fixes the
     checksum, writes the save to SRAM (bus writes to 0x0E000000 work in mGBA's Lua) and calls `emu:reset()`,
     so `GameInit` boots from that save.
+- **Gotcha, a frame can end mid-shuffle:** the first full run failed one check, Kaiba's tuned deck card for
+  card: one Cyber-Stein short, a fourth Koumori Dragon. It was the test, not the deck. `npc_deck.lua` read the
+  deck on the first frame it was loaded, and the CPU's shuffle runs across a few frames; the new build's
+  trampolines shift the timing enough that this frame ended in the middle of a swap (one card briefly in two
+  slots). A trace per frame showed the right counts one frame later. `npc_deck.lua` now logs once two frames
+  in a row hold the same cards.
