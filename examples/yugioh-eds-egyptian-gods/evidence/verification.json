@@ -505,9 +505,15 @@
       "smoke: Joey at 10 wins through a whole duel against a player who only ends turns; the CPU summoned Tiger Axe, Sinister Serpent and Dragon Zombie from the second deck and won"
     ],
     "not_verified": [
-      "on a real device (Delta)",
       "reaching 10 wins by playing (the tests set the record in RAM)"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (8710dd2f...)",
+      "result": "works (tested with the 10th-win lines build)"
+    }
   },
   "tenth_win_lines": {
     "decisions": "after the player's 10th win against Yugi, Tea, Joey, Tristan or Bakura (the win that switches them to their second deck), their 10th-win line (gOpponentResultTexts[].win10th) gets a new last page built around the user's sentence \"I better find some new cards and train more\"; data only (apply_gods.py --text 3); only in gods-3t-fx",
@@ -542,8 +548,14 @@
       "screenshots of the five new pages: each fits the dialogue box (Joey's and Tristan's use all four lines)"
     ],
     "not_verified": [
-      "on a real device (Delta)",
       "reaching the 10th win by playing (the tests set the record to 9 in RAM)"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (8710dd2f...)",
+      "result": "works"
+    }
   }
 }

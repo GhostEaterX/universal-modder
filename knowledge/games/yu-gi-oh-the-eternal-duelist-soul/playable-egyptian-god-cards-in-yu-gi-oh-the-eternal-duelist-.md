@@ -218,6 +218,8 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   (`gOpponentResultTexts[duelist].win10th`, picked while the record still says 9). Appending a `$c$p` page to
   those five dialogue records (fixed 0x304 bytes each) lets the duelist announce the new deck, as a data
   edit. To test dialogue, follow the printer pointer (`gBustup.textBox.text`) to the record's NUL.
+- **On a real device:** the user tested the build with the second decks and the 10th-win lines in Delta on
+  iOS: it works.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

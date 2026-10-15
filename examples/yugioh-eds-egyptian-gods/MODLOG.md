@@ -377,3 +377,10 @@
   (her usual line) and Rex's 10th-win line (unchanged).
 - **Results:** the whole `gods-3t-fx` suite is 77/77 against `gods-3t` (70 before, plus the 7 dialogue
   checks), every control comparison as expected. `gods-3t-fx` is `8710dd2f...` from two fresh work dirs.
+
+## 2026-10-15: second decks and 10th-win lines on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `8710dd2f...` works.
+- **The user's question:** how many CPU decks hold Dark Hole, Raigeki, Heavy Storm or Harpie's Feather Duster?
+  From the build's `deck_lists.json`: 22 of the 24 first decks hold at least one (not Yugi's or Tristan's),
+  and all 5 second decks. None goes over the ban list for them (Heavy Storm, limit 2, appears twice in Yami
+  Bakura's and Simon's), so `RemoveOverLimitDeckCards` leaves them in.

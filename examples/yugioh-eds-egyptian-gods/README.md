@@ -444,8 +444,9 @@ says 10.
 All five new pages fit the text box, checked on screenshots; Joey's and Tristan's take all four of its lines.
 
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
-Tiger Axe, Sinister Serpent and Dragon Zombie and won. Not yet checked for the second decks: a real device,
-and reaching 10 wins by playing (the tests set the record).
+Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the
+10th-win lines) in Delta on iOS: it works. Not yet checked in the emulator: reaching 10 wins by playing (the
+tests set the record).
 
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
