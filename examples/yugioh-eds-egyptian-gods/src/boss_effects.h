@@ -41,8 +41,19 @@ int BossRedEyesChainB(struct ChainEntry *link, struct ChainEntry *prevLink);
 int BossDarkMagicianResolve(struct ChainEntry *link, struct ChainEntry *chainedTo);
 int BossRedEyesResolve(struct ChainEntry *link, struct ChainEntry *chainedTo);
 
-/* ai_deck.c AiActivateMonsterEffects, after the Gods: the CPU uses a face-up Dark Magician's or Red-Eyes'
- * effect whenever it can be activated (the original list of such monsters holds four cards in a fixed loop). */
+/* ai_deck.c AiActivateMonsterEffects, after the Gods. With Red-Eyes Black Metal Dragon in its deck, the CPU
+ * upgrades a Red-Eyes that has Metalmorph equipped (1), or activates a set Metalmorph onto a Red-Eyes
+ * (BOSS_AI_METALMORPH); else it uses a face-up Dark Magician's or Red-Eyes' effect whenever it can be activated
+ * (1; the original list of such monsters holds four cards in a fixed loop). 0 if it did nothing. */
+#define BOSS_AI_METALMORPH  2
 int BossAiActivateEffects(void);
+/* The CPU's upgrade of a Red-Eyes with Metalmorph equipped, as the menu's Activate does for the human. 1 if
+ * done. ai_steps.c AiStepChangePositions, whose one monster effect per turn would otherwise stop at the
+ * Metalmorph, calls it on its next pass. */
+int BossAiUpgradeRedEyes(void);
+/* effect_targets1.c EffectEquipTargetChainB, the CPU's pick for Metalmorph: the zone of link->player's face-up
+ * Red-Eyes B. Dragon that has no Metalmorph yet and that the equip check accepts, or -1 (then the original pick,
+ * the strongest monster). */
+int BossMetalmorphTarget(struct ChainEntry *link);
 
 #endif /* GUARD_BOSS_EFFECTS_H */

@@ -14,7 +14,9 @@ the tree as a new unit and makes the edits that connect them to the engine:
     original upgrade to Red-Eyes Black Metal Dragon, one without uses its own effect (duel_cmd_queue.c);
   - their once-per-turn flag comes back every turn, as Barrel Dragon's (duel_cmd_turn.c);
   - Red-Eyes' target prompt is Barrel Dragon's "destroy" one (effect_targets1.c);
-  - the CPU activates them after the Gods (ai_deck.c).
+  - the CPU activates them after the Gods (ai_deck.c). With Red-Eyes Black Metal Dragon in its deck it plays
+    Joey's Metalmorph first: onto its Red-Eyes (its Metalmorph pick in effect_targets1.c), then the upgrade, in
+    the same step (ai_steps.c, the one monster effect after Main Phase 1).
 apply_gods.py --text 3 makes these monsters Effect monsters (the kind gives monster effects spell speed 1)
 and rewrites their card text. Idempotent. Stdlib only.
 """
@@ -86,6 +88,16 @@ EDITS = [
      "                    monster->effectUnused = 1;\n"
      "                    break;\n",
      "before:                case CARD_1344:"),
+    # The CPU's Metalmorph goes onto its Red-Eyes (the original takes its strongest monster).
+    ("src/effect_targets1.c",
+     "        switch (CARD_NUMBER(link->card)) {\n        case CARD_MEGAMORPH:\n",
+     f"        case CARD_METALMORPH: {{         /* {MARK}: its Red-Eyes first, for the upgrade */\n"
+     "            int zone = BossMetalmorphTarget(link);\n\n"
+     "            if (zone >= 0 && TryAddEffectTarget(link, link->player, zone) != 0)\n"
+     "                return 1;\n"
+     "            break;\n"
+     "        }\n",
+     "before:        case CARD_MEGAMORPH:"),
     # Red-Eyes' target prompt: "destroy", as Barrel Dragon's.
     ("src/effect_targets1.c",
      "        case CARD_DREAM_CLOWN:\n        case CARD_BARREL_DRAGON:\n",
@@ -97,6 +109,16 @@ EDITS = [
      "    if (GodAiActivateEffects())        /* mod (God effects): Obelisk and Ra */\n"
      "        return 1;\n"
      f"    return BossAiActivateEffects();    /* {MARK}: Dark Magician and Red-Eyes */\n",
+     "replace"),
+    # The CPU's one monster effect after its Main Phase 1: a Metalmorph it activates there resolves, then the
+    # upgrade takes the step's place on the next pass.
+    ("src/ai_steps.c",
+     "    case 0:\n        AiActivateMonsterEffects();\n        st->subState = 0;\n",
+     "    case 0:\n"
+     f"        /* {MARK}: after a Metalmorph onto Red-Eyes, stay for the upgrade */\n"
+     "        if (!BossAiUpgradeRedEyes() && AiActivateMonsterEffects() == BOSS_AI_METALMORPH)\n"
+     "            return 0;\n"
+     "        st->subState = 0;\n",
      "replace"),
     # CalcBattle.
     ("src/campaign.c",
@@ -119,7 +141,7 @@ EDITS = [
      "    }\n",
      "after"),
 ]
-INCLUDED = ["src/ai_deck.c", "src/campaign.c", "src/effect_hooks.c"]
+INCLUDED = ["src/ai_deck.c", "src/ai_steps.c", "src/campaign.c", "src/effect_hooks.c", "src/effect_targets1.c"]
 
 
 def edit(t, path, anchor, text, how):

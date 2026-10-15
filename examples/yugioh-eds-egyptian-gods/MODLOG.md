@@ -541,3 +541,43 @@
 
 ## 2026-10-15: the bosses' effects on a real device
 - **Delta on iOS (user's test):** `gods-3t-fx` `79361de1...` (the bosses' effects) works.
+
+## 2026-10-15: Joey's Metalmorph, played by the CPU (in `gods-3t-fx`)
+- **User's ask:** give Joey's second deck its Metalmorph back, so the CPU upgrades Red-Eyes. The deck tuning
+  had traded it for Skull Dice, because the CPU never played it.
+- **What the original AI does with Metalmorph:** `AiStepSetSpellTraps` sets any Trap from its hand, so it gets
+  set; nothing ever activates it (it is on no list and has no response condition), and the upgrade is a
+  monster-menu command, which only the human gets.
+- **The change:**
+  - `DECK_TUNING_3T`: Joey's second deck keeps Metalmorph (Kunai with Chain -> Time Wizard stays). 64 cards in
+    26 decks, 41 of them dead.
+  - `BossAiActivateEffects` first upgrades a Red-Eyes that has Metalmorph, or flips a set, activatable
+    Metalmorph (canActivate, +0x91 bit 2) onto a face-up Red-Eyes, when Red-Eyes Black Metal Dragon is in the
+    CPU's deck; only then Dark Magician's and Red-Eyes' own effects.
+  - `EffectEquipTargetChainB`: the CPU's Metalmorph takes its Red-Eyes; the original takes its strongest
+    monster.
+  - `AiStepChangePositions`: see the gotcha below.
+- **Gotcha, one monster effect after Main Phase 1:** the first build equipped Metalmorph and never upgraded.
+  On a turn the CPU plans an attack, `AI_MAIN_SUMMON` Normal Summons and ends Main Phase 1 before its
+  monster-effect phase. Step 3 (`AiStepChangePositions`) then calls `AiActivateMonsterEffects` exactly once,
+  and the Metalmorph used that call. The step now stays while a Metalmorph it activated resolves, and its next
+  pass does the upgrade instead of another effect.
+- **Correction:** that same step 3 means the CPU uses one monster effect even on a turn it summons to attack.
+  The README said its effects come only on turns it doesn't (true for its spells, not for monster effects).
+  A check now covers it: its Dark Magician destroys a set card on a summon turn.
+- **Gotcha, no RAM for the upgrade's two steps:** the menu runs it over two frames (Tribute, then the deck
+  summon), and `hookbuild.py` can't place new data, so the CPU can't remember a pending upgrade. It does both
+  steps in one call. `QueueSpecialSummonChoosePosition` takes `FindFreeMonsterZone` while the Tribute is still
+  queued, so the CPU needs another free zone, and the new monster lands there; the CPU picks its position
+  (`AiShouldSetMonster`).
+- **Harness:** the two-turn check plays the human's turn 2 with eds-decomp's `duel_turn2` recipe cadence (A
+  every 20 frames on the deck through the draw and the Standby Phase), from a 5-card hand. From the state's 6
+  cards the run never drew, and the extra A presses opened Card View.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 151/151 against `gods-3t` (146 before, plus 5 checks: the CPU's upgrade,
+    its pick of Red-Eyes over Blue-Eyes, the two turns from its hand, Metalmorph left set without Black Metal
+    Dragon, Dark Magician on a summon turn), every control comparison as expected; Joey's second deck loads card
+    for card with its Metalmorph;
+  - `gods-3t-fx` is `eabd901f...` (`.bps` 78,463 bytes), the same ROM and `.bps` from two fresh work dirs;
+  - `gods`, `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .`
+    pass.

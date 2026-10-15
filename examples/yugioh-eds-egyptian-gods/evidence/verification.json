@@ -862,5 +862,63 @@
       "patch": "gods-3t-fx.bps (79361de1...)",
       "result": "works"
     }
+  },
+  "cpu_metalmorph": {
+    "decisions": "the user asked to give Joey's second deck its Metalmorph back so the CPU upgrades Red-Eyes: DECK_TUNING_3T no longer trades it for Skull Dice (64 cards in 26 decks, 41 dead), and the CPU now plays it (patch_boss_effects.py, src/boss_effects.c)",
+    "design": {
+      "original_ai": "AiStepSetSpellTraps sets any Trap from the hand, so Metalmorph got set; nothing activated it, and the upgrade is a monster-menu command only the human gets",
+      "activation": "BossAiActivateEffects, with Red-Eyes Black Metal Dragon in the CPU's deck: upgrade a Red-Eyes that has Metalmorph, else flip a set, activatable Metalmorph onto a face-up Red-Eyes (point, flip, Chain_AddPending as AiTryPlaySpellTrap does); Dark Magician's and Red-Eyes' own effects come after",
+      "target": "EffectEquipTargetChainB, the CPU's Metalmorph: its face-up Red-Eyes without a Metalmorph (BossMetalmorphTarget), else the original pick (its strongest monster)",
+      "upgrade": "both of the menu's steps in one call (TributeMonster, then TakeDeckCardByNumber and QueueSpecialSummonChoosePosition): hookbuild.py allows no new RAM to remember a pending step; needs another free monster zone",
+      "step_3": "AiStepChangePositions calls AiActivateMonsterEffects once; it now stays while a Metalmorph it activated resolves, and its next pass makes the upgrade"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "eabd901ffabcc1f0ae52cf68cca9e3890afd63ad",
+      "patch_bytes": 78463,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "2cb6ffd6... equipped Metalmorph and never upgraded (the one monster effect after Main Phase 1)"
+    },
+    "suite_result": "151/151 against gods-3t: the 146 checks before plus 5 (the CPU's Metalmorph upgrade, its pick of Red-Eyes, the two turns from its hand, Metalmorph left set without Black Metal Dragon, Dark Magician on a summon turn); every control comparison as expected (17 not compared)",
+    "oracles": [
+      {
+        "check": "the CPU's set Metalmorph goes onto its Red-Eyes, which it Tributes for Red-Eyes Black Metal Dragon from its deck, then attacks for 2800",
+        "build": "pass",
+        "control": "fails (Metalmorph stays set)"
+      },
+      {
+        "check": "with its Blue-Eyes White Dragon on the field too, Metalmorph still goes onto Red-Eyes",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "from its hand over two turns: Red-Eyes attacks and Metalmorph is set; the human draws and ends the turn; the CPU upgrades and attacks for 2800",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "without Red-Eyes Black Metal Dragon in its deck, the CPU leaves Metalmorph set",
+        "build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Dark Magician destroys the human's set card on a turn it Normal Summons to attack",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Joey's second deck loads card for card with its Metalmorph (second-deck suite)",
+        "build": "pass",
+        "control": "fails (the control never loads second decks)"
+      }
+    ],
+    "corrections": [
+      "the boss-effects docs said the CPU uses its monster effects only on turns it doesn't Normal Summon to attack; that holds for its spells, but AiStepChangePositions gives it one monster effect after Main Phase 1 every turn (now checked)"
+    ],
+    "not_verified": [
+      "a real device",
+      "a full duel against Joey's second deck that reaches the upgrade by drawing"
+    ]
   }
 }

@@ -79,7 +79,8 @@ PAGE_BREAK = "$c$p"                 # wait for A, then a new page (the game's ow
 # The three-Tribute effects build also tunes the CPU decks: every card the CPU can never play (no rule in its
 # code plays, sets off or chains it: Snatch Steal, Spellbinding Circle, Kunai with Chain, Solemn Judgment, Horn
 # of Heaven, Sebek's Blessing, Metalmorph, Time Machine, 7 Completed, and Megamorph outside Kaiba's Cyber-Stein
-# combo) and a few generic cards give way to cards that fit the duelist and that the CPU does play. Swaps are
+# combo) and a few generic cards give way to cards that fit the duelist and that the CPU does play. Joey's second
+# deck keeps its Metalmorph, which the CPU plays on Red-Eyes in this build (patch_boss_effects.py). Swaps are
 # one for one, so the deck region still fits. (deck table, duelist ID) -> [(card number, copies before,
 # copies after)]; the names are for reading only. A deck is changed only when it holds exactly the "before"
 # counts, and left alone when it already holds the "after" ones.
@@ -97,11 +98,9 @@ DECK_TUNING_3T = {
         (336, 1, 0),   # Raigeki
         (15, 1, 2),    # Time Wizard
     ],
-    (A, 3): [   # Joey Wheeler, second deck
+    (A, 3): [   # Joey Wheeler, second deck; keeps Metalmorph, which the CPU plays on Red-Eyes (patch_boss_effects.py)
         (650, 1, 0),   # Kunai with Chain
         (15, 0, 1),    # Time Wizard
-        (657, 1, 0),   # Metalmorph
-        (1204, 0, 1),  # Skull Dice
     ],
     (A, 4): [   # Tristan Taylor, second deck
         (1068, 1, 0),  # Snatch Steal

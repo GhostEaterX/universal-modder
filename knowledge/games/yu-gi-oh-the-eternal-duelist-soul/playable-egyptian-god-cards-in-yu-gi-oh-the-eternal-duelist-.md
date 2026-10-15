@@ -267,6 +267,9 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   the coin on heads and on tails (RNG pinned), and the bonus fail on the old build; Raigeki on Golem, the
   Metalmorph upgrade, B. Skull Dragon's fusion and Black Metal Dragon attacked are unchanged.
 - **On a real device:** the user tested this build in Delta on iOS: it works.
+- **Joey's Metalmorph:** the original AI sets Metalmorph like any Trap and never activates it, and the upgrade
+  to Red-Eyes Black Metal Dragon is a menu command only the human gets. The CPU now flips its set Metalmorph
+  onto its Red-Eyes (its equip pick steered there) and makes the upgrade itself, over two turns from its hand.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
@@ -409,6 +412,15 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
     reads the toss from `gDuelScene` (scene 0; arg bits 8-14 the count, bit i coin i), so "tails, nothing
     destroyed" is a real result and not an effect that never ran. The same pinned state can land the other
     way on the CPU's turn (it draws and plans first), so find each test's state by running it.
+37. **The CPU gets one monster effect after Main Phase 1, summon or not.** In its main phases it retries monster
+    effects after each one, until it Normal Summons to attack, which ends the phase. Then
+    `AiStepChangePositions` calls `AiActivateMonsterEffects` exactly once. A two-part play (equip, then use
+    it) needs that step to wait for the first part to resolve. Spells are different: they really wait for a
+    turn without the summon (30).
+38. **No new RAM in a hooked build, so a multi-frame command runs in one call.** `hookbuild.py` refuses
+    `.data` and `.bss`, so the CPU can't remember "upgrade pending" between frames. Doing the menu's two
+    steps at once works, with one catch: the Special Summon picks its zone while the Tribute is still queued,
+    so it needs another free zone.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

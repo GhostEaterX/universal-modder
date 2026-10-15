@@ -7,6 +7,8 @@
 #include "duel.h"                   /* gDuelPlayers, struct DuelZone */
 #include "chain.h"                  /* struct ChainEntry, Chain_AddPending */
 #include "duel_cmd.h"               /* DuelCmd_Push */
+#include "duel_actions.h"           /* TributeMonster */
+#include "summon.h"                 /* QueueSpecialSummonChoosePosition */
 #include "effect.h"                 /* struct CardEffect, gCardEffectsMod, CanActivateEffect, TryAddEffectTarget */
 #include "effect_handlers.h"        /* the original handlers these rows reuse */
 #include "util.h"                   /* Random */
@@ -27,6 +29,10 @@
  *   Red-Eyes B. Dragon  once per turn: toss a coin; heads destroys 1 monster your opponent controls (Barrel
  *                       Dragon's activation and pick, Time Wizard's coin)
  *   Red-Eyes Black Metal Dragon  attacking a monster, + a quarter of its ATK (Metalmorph's rule at half)
+ *
+ * The CPU also plays Joey's Metalmorph: a set Metalmorph goes onto its face-up Red-Eyes B. Dragon, and a Red-Eyes
+ * with Metalmorph equipped is Tributed for Red-Eyes Black Metal Dragon from the deck, the upgrade the monster
+ * menu offers the human. The original AI sets Metalmorph like any Trap and never activates it.
  *
  * None of them is protected from removal. The table rows only point at functions of this unit, which call the
  * original handlers: hookbuild relocates calls into the original code, and this keeps every handler pointer a
@@ -141,11 +147,99 @@ int BossRedEyesResolve(struct ChainEntry *link, struct ChainEntry *chainedTo)
     return EFFECT_STEP_DONE;
 }
 
+/* 1 if the CPU's deck holds Red-Eyes Black Metal Dragon. */
+static int CpuDeckHasBlackMetalDragon(void)
+{
+    int i;
+
+    for (i = 0; i < gDuelPlayers[1].deckCount; i++) {
+        if (NUMBER_OF(gDuelPlayers[1].deck[i].id) == CARD_RED_EYES_BLACK_METAL_DRAGON)
+            return 1;
+    }
+    return 0;
+}
+
+int BossMetalmorphTarget(struct ChainEntry *link)
+{
+    int zone;
+
+    for (zone = ZONE_MONSTER_0; zone <= ZONE_MONSTER_4; zone++) {
+        struct DuelZone *z = ZONE(link->player, zone);
+
+        if (z->card.id && z->isFaceUp && NUMBER_OF(z->card.id) == CARD_RED_EYES_B_DRAGON
+            && CountZoneLinksFromCard(link->player, zone, CARD_METALMORPH) == 0
+            && EffectEquipTargetCheck(link, DUEL_LOC(link->player, zone)))
+            return zone;
+    }
+    return -1;
+}
+
+/* The CPU's set Metalmorph, onto its face-up Red-Eyes when Red-Eyes Black Metal Dragon is in its deck: point at
+ * it, flip it and add it to the chain, as AiTryPlaySpellTrap does with a set card. */
+static int BossAiActivateMetalmorph(void)
+{
+    struct ChainEntry ref;
+    int zone;
+
+    if (!CpuDeckHasBlackMetalDragon())
+        return 0;
+    for (zone = ZONE_SPELL_0; zone <= ZONE_SPELL_4; zone++) {
+        struct DuelZone *z = ZONE(1, zone);
+
+        if (!z->card.id || z->isFaceUp || !z->canActivate || NUMBER_OF(z->card.id) != CARD_METALMORPH)
+            continue;
+        ref.card = z->card.id;
+        ref.player = 1;
+        ref.zone = zone;
+        ref.event = 0;
+        ref.negated = 0;
+        if (BossMetalmorphTarget(&ref) < 0 || !CanActivateEffect(&ref, NULL, 0))
+            continue;
+        DuelCmd_Push(DUEL_CMD_PLAYER | DUEL_CMD_POINT_AT_CARD, 1, zone << 8, 0);
+        DuelCmd_Push(DUEL_CMD_PLAYER | DUEL_CMD_FLIP_CARD, zone, 0, 0);
+        Chain_AddPending(0x80000000 | (CHAIN_KIND_SPELL_TRAP << 21) | ((u32)zone << 16) | z->card.id, 0);
+        return 1;
+    }
+    return 0;
+}
+
+/* The menu's upgrade, both of its steps at once (Tribute the Red-Eyes, then Special Summon Red-Eyes Black Metal
+ * Dragon from the deck in a position the CPU picks). The summon is queued before the Tribute's command empties
+ * the zone, so it needs another free zone. */
+int BossAiUpgradeRedEyes(void)
+{
+    struct DuelCard taken;
+    int zone;
+
+    if (CountFreeMonsterZones(1) == 0 || !CpuDeckHasBlackMetalDragon()
+        || CountActiveCardsOnField(0, CARD_1418) > 0 || CountActiveCardsOnField(1, CARD_1418) > 0)
+        return 0;
+    for (zone = ZONE_MONSTER_0; zone <= ZONE_MONSTER_4; zone++) {
+        struct DuelZone *z = ZONE(1, zone);
+
+        if (!z->card.id || !z->isFaceUp || NUMBER_OF(z->card.id) != CARD_RED_EYES_B_DRAGON
+            || CountZoneLinksFromCard(1, zone, CARD_METALMORPH) == 0)
+            continue;
+        DuelCmd_Push(DUEL_CMD_PLAYER | DUEL_CMD_POINT_AT_CARD, 1, zone << 8, 0);
+        if (!TributeMonster(1, zone))
+            return 0;
+        if (TakeDeckCardByNumber(1, CARD_RED_EYES_BLACK_METAL_DRAGON, &taken))
+            QueueSpecialSummonChoosePosition(1, &taken, 1, 1);
+        return 1;
+    }
+    return 0;
+}
+
 int BossAiActivateEffects(void)
 {
     struct ChainEntry ref;
     int zone;
 
+    /* Red-Eyes: the upgrade, or the Metalmorph that leads to it, before its coin */
+    if (BossAiUpgradeRedEyes())
+        return 1;
+    if (BossAiActivateMetalmorph())
+        return BOSS_AI_METALMORPH;
     for (zone = ZONE_MONSTER_0; zone <= ZONE_MONSTER_4; zone++) {
         struct DuelZone *z = ZONE(1, zone);
         u16 id = z->card.id;

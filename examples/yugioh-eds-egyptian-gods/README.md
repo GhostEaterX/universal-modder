@@ -38,8 +38,8 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole. After that 10th win,
   their usual 10th-win line gets a new last page that says so: "I better find some new cards and train
   more."
-- **CPU deck tuning (`gods-3t-fx.bps`):** 65 cards change in 26 of the 29 CPU decks.
-  - 42 of them were cards the CPU can never play, such as Snatch Steal (in 15 decks), Spellbinding Circle and
+- **CPU deck tuning (`gods-3t-fx.bps`):** 64 cards change in 26 of the 29 CPU decks.
+  - 41 of them were cards the CPU can never play, such as Snatch Steal (in 15 decks), Spellbinding Circle and
     Solemn Judgment.
   - The rest trade generic cards for ones that fit the duelist: Time Wizard for Joey, Fissure and Giant Rat for
     Rex, Barrel Dragon for Espa Roba and the Duel Computer, Mother Grizzly for Mako, and Harpie Lady Sisters for
@@ -69,6 +69,9 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - **Red-Eyes B. Dragon:** once per turn, target 1 monster your opponent controls and toss a coin: heads
     destroys it. Joey plays it. With Metalmorph equipped, its Activate is still the upgrade to Red-Eyes Black
     Metal Dragon.
+  - **Joey's Metalmorph:** his second deck keeps its Metalmorph, and the CPU now plays it: it sets it, flips it
+    onto its Red-Eyes, then Tributes the Red-Eyes for the Red-Eyes Black Metal Dragon in its deck, as you
+    would.
   - **Red-Eyes Black Metal Dragon:** a weaker Metalmorph of its own: when it attacks a monster, it gains a
     quarter of that monster's ATK during damage calculation (Metalmorph gives half).
   - **The Duel Computer** trades two of its three White Magical Hats for two Barrel Dragons, so the last
@@ -161,9 +164,11 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `79361de1f81f7b94358b914559f172fe515ceed5`, with the summon rules, the pack
+- `gods-3t-fx.gba`: SHA-1 `eabd901ffabcc1f0ae52cf68cca9e3890afd63ad`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization),
-  the Ritual monsters in the Extra Deck and the bosses' effects; the user ran it in Delta. Earlier versions:
+  the Ritual monsters in the Extra Deck and the bosses' effects (with the CPU's Metalmorph). Earlier versions:
+  - `79361de1f81f7b94358b914559f172fe515ceed5`: before the CPU's Metalmorph (Joey's second deck traded it for
+    Skull Dice); the user ran it in Delta;
   - `27e5fdeeb39f652fc4c15f2103f57695e467a827`: before the bosses' effects; the user ran it in Delta;
   - `9372e6d50a857a1131e0c72785f5ae16bf53a486`: before Kaiba's Polymerization; the user ran it in Delta;
   - `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`: before the Extra Deck rituals; the user ran it in Delta;
@@ -307,14 +312,15 @@ an answer to one of your cards, a flip it plans, a scripted combo. A card with n
 forever. `apply_gods.py --text 3` swaps cards in the CPU decks (`deck_lists.json`), one for one, so the deck
 region still fits.
 
-**The dead slots (42 copies).**
+**The dead slots (41 copies).**
 
 | Card | Copies | Notes |
 |---|---|---|
 | Snatch Steal | 15 | Only on the CPU's lists for reading your hand and deck. Checked in the emulator: it holds it with your Blue-Eyes on the field and sets a monster instead |
 | Spellbinding Circle | 5 | |
 | Kunai with Chain, Solemn Judgment | 4 each | |
-| Horn of Heaven, Sebek's Blessing, Metalmorph | 3 each | |
+| Horn of Heaven, Sebek's Blessing | 3 each | |
+| Metalmorph | 2 | Ishizu's. Joey's second deck keeps its own: the bosses' effects teach the CPU to play it on Red-Eyes |
 | Time Machine, 7 Completed | 2 each | |
 | Megamorph | 1 | Played only in Kaiba's Cyber-Stein combo, so dead in Pegasus's deck |
 
@@ -325,7 +331,7 @@ region still fits.
 | Yugi, 2nd deck | Snatch Steal → Call Of The Haunted |
 | Tea, 2nd deck | Spellbinding Circle → Gift of The Mystical Elf |
 | Joey | Raigeki → Time Wizard (2nd copy) |
-| Joey, 2nd deck | Kunai with Chain → Time Wizard; Metalmorph → Skull Dice |
+| Joey, 2nd deck | Kunai with Chain → Time Wizard |
 | Tristan, 2nd deck | Snatch Steal → Invader of the Throne; Harpie's Feather Duster → Trap Master |
 | Bakura, both decks | Spellbinding Circle → Call Of The Haunted; Dark Elf → Mystic Tomato |
 | Rex Raptor | Snatch Steal, Raigeki → Fissure ×2; Witch of the Black Forest ×2 → Giant Rat ×2 |
@@ -406,8 +412,8 @@ Relinquished). The deck region is full, so nothing was added; a 39-card deck run
 ### How the bosses' effects work (gods-3t-fx)
 A two-Tribute monster with 2400 or 2500 ATK and no effect is a poor boss next to the game's own Effect monsters
 (Barrel Dragon, Jinzo, Suijin). Each new effect reuses a mechanic the engine already has, so the CPU can use it
-too. `scripts/patch_boss_effects.py` copies `src/boss_effects.c` into the decomp as a new unit and makes 11
-anchored edits in 8 files.
+too. `scripts/patch_boss_effects.py` copies `src/boss_effects.c` into the decomp as a new unit and makes 13
+anchored edits in 9 files.
 
 ```
  PASSIVE: CalcBattle, after the ATK comparison
@@ -424,6 +430,11 @@ anchored edits in 8 files.
                        set card first), destroy it (Mystical Space Typhoon's resolve)
    Red-Eyes B. Dragon: pick 1 of the opponent's monsters (Barrel Dragon's prompt; the CPU takes your
                        strongest), toss 1 coin, heads destroys it
+
+ THE CPU'S METALMORPH (Joey's second deck), with Red-Eyes Black Metal Dragon in its deck
+   turn N     sets Metalmorph from its hand (the original rule for any Trap)
+   turn N+1   flips it onto its face-up Red-Eyes ─► the chain resolves ─► Tributes the Red-Eyes,
+              Special Summons Red-Eyes Black Metal Dragon from its deck (the menu's upgrade, both steps)
 ```
 
 | Where | What the edits do |
@@ -435,17 +446,23 @@ anchored edits in 8 files.
 | the card menu's Activate (`duel_cmd_queue.c`) | Red-Eyes without a Metalmorph goes to the chain like any monster effect, instead of the upgrade |
 | the turn start (`duel_cmd_turn.c`) | Dark Magician's and Red-Eyes' once-per-turn flag comes back, as Barrel Dragon's does |
 | `EffectOpponentMonsterChainB` | Red-Eyes' prompt is Barrel Dragon's "destroy" one |
-| `AiActivateMonsterEffects` | after the Gods, the CPU activates a face-up Dark Magician or Red-Eyes whenever it can |
+| `AiActivateMonsterEffects` | after the Gods, the CPU upgrades a Red-Eyes that has Metalmorph, or flips a set Metalmorph onto one; otherwise it activates a face-up Dark Magician or Red-Eyes whenever it can |
+| `EffectEquipTargetChainB` | the CPU's Metalmorph goes onto its Red-Eyes (the original takes its strongest monster) |
+| `AiStepChangePositions` | its one monster effect after Main Phase 1 waits for a Metalmorph to resolve, then makes the upgrade |
 
 **The data** (`apply_gods.py --text 3`, `BOSSES_3T`): Summoned Skull, Millennium Golem, both Dark Magicians and
 Red-Eyes B. Dragon become Effect monsters (the kind gives a monster effect spell speed 1; a Normal monster's
 row would never be offered), and all six cards get new text in their 480-byte records. The Duel Computer's
-swap is in `DECK_TUNING_3T`.
+swap is in `DECK_TUNING_3T`, and Joey's second deck keeps its Metalmorph there.
 
-**The CPU:** it activates Dark Magician or Red-Eyes as soon as the check finds a target. Like every activated
-effect it uses, that happens on a turn it doesn't Normal Summon to attack first (see the Extra Deck rituals
-above). It doesn't plan around the passive effects: it attacks into Millennium Golem or keeps Summoned Skull
-back as it did before.
+**The CPU:** it activates Dark Magician or Red-Eyes as soon as the check finds a target. In its main phases it
+tries its monster effects before its spells, and again after each one, until it Normal Summons to attack.
+Right after Main Phase 1 (`AiStepChangePositions`) it gets one more, even on a turn it summoned. A Metalmorph
+would use up that one, so that step waits for the Metalmorph to resolve and then makes the upgrade.
+The upgrade needs a free monster zone: its summon is queued while the Tribute is still on the way. The
+mod can't keep new state in RAM (`hookbuild.py` refuses data sections), so the CPU does both of the menu's
+steps in one call. It doesn't plan around the passive effects: it attacks into Millennium Golem or keeps
+Summoned Skull back as it did before.
 
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
@@ -698,6 +715,11 @@ give it a hand of Blue-Eyes White Dragons it can't summon, so it goes straight t
 | The CPU still plays Polymerization for B. Skull Dragon (Summoned Skull + Red-Eyes) | pass | pass |
 | The five new card texts are in the ROM | pass | fails |
 | Deck Edit's Effect Monsters filter lists the Trunk's Dark Magician with the Gods (in the rules suite) | pass | fails |
+| The CPU's set Metalmorph goes onto its Red-Eyes, which it Tributes for Red-Eyes Black Metal Dragon from its deck; it attacks for 2800 | pass | fails (Metalmorph stays set) |
+| ... onto Red-Eyes, not the CPU's stronger Blue-Eyes | pass | fails |
+| ... from its hand over two turns: Red-Eyes attacks and Metalmorph is set; next turn the upgrade, then 2800 | pass | fails |
+| Without Red-Eyes Black Metal Dragon in its deck, the CPU leaves Metalmorph set | pass | pass |
+| The CPU's Dark Magician destroys your set card on a turn it Normal Summons to attack | pass | fails |
 
 The Metalmorph check found a bug before release: the upgrade runs in two steps, and its second step found the
 zone empty, without a Metalmorph, so it tossed Red-Eyes' coin too and Red-Eyes Black Metal Dragon never came.
@@ -747,11 +769,15 @@ Also checked:
 - **The CPU's rituals depend on its turn plan:** it plays a Ritual Magic card on a turn it doesn't Normal
   Summon to attack (the original AI's order), and Bakura's, Mako's and Pegasus's main decks are 39 cards.
 - **The bosses' effects and the CPU:**
-  - it activates Dark Magician and Red-Eyes on a turn it doesn't Normal Summon to attack (the original AI's
-    order), and whenever it finds a target, without weighing it;
+  - it activates Dark Magician and Red-Eyes whenever it finds a target, without weighing it; on a turn it
+    Normal Summons to attack, it gets one monster effect, after Main Phase 1;
   - it attacks and blocks as before, so it doesn't count on Summoned Skull's piercing or Golem's survival;
-  - Red-Eyes Black Metal Dragon is in Joey's second deck only, and the CPU never plays Metalmorph or the
-    upgrade, so its bonus is for your copies.
+  - with Metalmorph and Red-Eyes Black Metal Dragon in its deck, it takes the upgrade over Red-Eyes' coin,
+    and makes it at once, although a Red-Eyes with Metalmorph hits harder when it attacks (half of the
+    target's ATK, against a quarter);
+  - its upgrade needs a free monster zone, and Red-Eyes Black Metal Dragon lands in another zone than the
+    Red-Eyes;
+  - only Joey's second deck holds Metalmorph and Red-Eyes Black Metal Dragon together.
 - **Red-Eyes with Metalmorph equipped:** its Activate is the upgrade, as in the original game, so it can't
   toss its coin until the Metalmorph is gone. Without Red-Eyes Black Metal Dragon in your Deck, it has no
   Activate at all.

@@ -40,9 +40,10 @@ checks also run on a control ROM, where each check says what must happen there:
     regressions (a ritual from the hand, a Normal monster to the Side Deck, a save without rituals) pass;
   - with --boss-effects, the same control for the bosses' effects: Summoned Skull's piercing damage, Millennium
     Golem surviving battle, Dark Magician's once-per-turn Spell/Trap destruction and Red-Eyes B. Dragon's coin
-    (heads and tails, with a pinned RNG state), each for the player and the CPU, and Red-Eyes Black Metal
-    Dragon's quarter bonus; all of that fails on the control, and the regressions (Raigeki on Golem, the
-    Metalmorph upgrade, B. Skull Dragon's fusion, Black Metal Dragon attacked) pass. It also makes the rules
+    (heads and tails, with a pinned RNG state), each for the player and the CPU, Red-Eyes Black Metal
+    Dragon's quarter bonus, and the CPU's Metalmorph onto Red-Eyes and its upgrade; all of that fails on the
+    control, and the regressions (Raigeki on Golem, the player's Metalmorph upgrade, B. Skull Dragon's fusion,
+    Black Metal Dragon attacked, a set Metalmorph without Black Metal Dragon in the deck) pass. It also makes the rules
     suite's Effect Monsters filter expect the Trunk's Dark Magician, an Effect monster now.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
@@ -457,6 +458,9 @@ RED_EYES_KEYS = ACTIVATE_KEYS + "; 500 UP; 540 A"           # the CPU's zone 0
 METALMORPH_UPGRADE_KEYS = ("20 UP; 50 A; 80 RIGHT; 100 A; 350 A; 450 A; 1100 A; 1150 RIGHT; 1200 RIGHT; 1250 A; "
                            "1500 A")
 QUIET_CPU = {"C_HAND": "82,82,82,82,82", "C_DECK": "82"}     # Blue-Eyes it can't summon: no Normal Summon
+# end turn 1; turn 2 (a 5-card hand, so there is a draw): A on the deck through the draw and the Standby Phase, as
+# eds-decomp's duel_turn2 recipe does, then end it
+METALMORPH_TWO_TURNS_KEYS = END_TURN_KEYS + "; 2600-2800/20 A; 3000 B; 3040 A"
 HEADS, TAILS = {"PIN_RNG": "1234ABCD"}, {"PIN_RNG": "00000002"}     # the player's coin from these RNG states
 CPU_TAILS = {"PIN_RNG": "00000001"}                                 # the CPU's coin (its turn draws first)
 
@@ -504,6 +508,23 @@ def boss_effects_suite():
         check("bosses: ... but not when it's attacked", E, "duel_main1", 4000, END_TURN_KEYS,
               dict(QUIET_CPU, C_ZONES="0:82", P_ZONES="0:580"), r"P 0,0,0,0,0 C 82,0,0,0,0 LP 7800 8000",
               control="passes"),
+        # Joey's Metalmorph: the CPU's set Metalmorph onto its Red-Eyes, then the upgrade from its deck
+        check("bosses: the CPU's Metalmorph upgrades Red-Eyes", E, "duel_main1", 4500, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:579:u,5:466:sa", C_DECK="580,82"),
+              r"C\{0\[1/0=1281\]\}[\s\S]*P 0,0,0,0,0 C 0,580,0,0,0 LP 5200 8000 hand 6 6 grave 0 2"),
+        check("bosses: ... onto Red-Eyes, not its Blue-Eyes", E, "duel_main1", 5000, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:579:u,1:82,5:466:sa", C_DECK="580,82"),
+              r"P 0,0,0,0,0 C 0,82,580,0,0 LP 2200 8000"),
+        check("bosses: ... and keeps it set without one", E, "duel_main1", 4500, END_TURN_KEYS,
+              dict(QUIET_CPU, C_ZONES="0:579:u,5:466:sa"),
+              r"P 0,0,0,0,0 C 579,0,0,0,0 LP 5600 8000 hand 6 6 grave 0 0 links P\{\} C\{\}", control="passes"),
+        # from the hand: the CPU sets it on its turn (the original rule for any Trap), and plays it on the next
+        check("bosses: ... and from its hand over two turns", E, "duel_main1", 7500, METALMORPH_TWO_TURNS_KEYS,
+              dict(QUIET_CPU, P_HANDN="5", C_ZONES="0:579", C_HAND="466,82,82,82,82", C_DECK="580,82"),
+              r"LP 5600 8000[\s\S]*C\{0\[1/0=1281\]\}[\s\S]*C 0,580,0,0,0 LP 2800 8000"),
+        # the one monster effect after Main Phase 1 comes on a turn the CPU summons to attack too
+        check("bosses: the CPU's Dark Magician on a summon turn", E, "duel_main1", 4500, END_TURN_KEYS,
+              {"C_ZONES": "0:150:u", "P_ZONES": "5:570:s", "C_HAND": "1,1,1,1,1"}, r"C 150,1,0,0,0 [^\n]*grave 1 0"),
         check("bosses: the CPU still fuses B. Skull Dragon", E, "duel_main1", 4000, END_TURN_KEYS,
               {"C_HAND": "552,675,579,82,82", "C_FUSION": "42", "P_HAND": "1,1,1,1,1"}, r"C 42,0,0,0,0",
               control="passes"),
