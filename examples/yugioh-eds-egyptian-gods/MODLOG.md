@@ -538,3 +538,6 @@
   - `gods-3t-fx` is `79361de1...` (`.bps` 77,643 bytes), the same ROM and `.bps` from two fresh work dirs;
   - `gods`, `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .`
     pass.
+
+## 2026-10-15: the bosses' effects on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `79361de1...` (the bosses' effects) works.

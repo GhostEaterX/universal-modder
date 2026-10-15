@@ -851,10 +851,16 @@
       "played once outside the suite: Dark Magician's alternate art (ID 151, card 2034) destroys one of the CPU's set cards with the same keys"
     ],
     "not_verified": [
-      "a real device",
       "a full played duel against a boss deck",
       "the Duel Computer's Barrel Dragons in a duel (its deck loads card for card in the tuning suite; Barrel Dragon's CPU rule is the original game's)",
       "a Link Battle"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (79361de1...)",
+      "result": "works"
+    }
   }
 }

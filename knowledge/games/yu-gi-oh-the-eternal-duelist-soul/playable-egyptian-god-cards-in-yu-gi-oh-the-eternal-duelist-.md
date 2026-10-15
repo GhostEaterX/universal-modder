@@ -266,6 +266,7 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **Checks:** both players' piercing, survival, Spell/Trap destruction (once per turn, reset on the next turn),
   the coin on heads and on tails (RNG pinned), and the bonus fail on the old build; Raigeki on Golem, the
   Metalmorph upgrade, B. Skull Dragon's fusion and Black Metal Dragon attacked are unchanged.
+- **On a real device:** the user tested this build in Delta on iOS: it works.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

@@ -163,7 +163,7 @@ tested ROMs byte for byte:
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
 - `gods-3t-fx.gba`: SHA-1 `79361de1f81f7b94358b914559f172fe515ceed5`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning (with Kaiba's Polymerization),
-  the Ritual monsters in the Extra Deck and the bosses' effects. Earlier versions:
+  the Ritual monsters in the Extra Deck and the bosses' effects; the user ran it in Delta. Earlier versions:
   - `27e5fdeeb39f652fc4c15f2103f57695e467a827`: before the bosses' effects; the user ran it in Delta;
   - `9372e6d50a857a1131e0c72785f5ae16bf53a486`: before Kaiba's Polymerization; the user ran it in Delta;
   - `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`: before the Extra Deck rituals; the user ran it in Delta;
@@ -704,6 +704,7 @@ zone empty, without a Metalmorph, so it tossed Red-Eyes' coin too and Red-Eyes B
 The coin path now starts only at the first step. Also seen on screenshots: Dark Magician's prompt and pick,
 the coin scene for both players, and the new card text in Card View ("[Spellcaster/Effect]", orange frame).
 Played once outside the suite: Dark Magician's alternate art (card 2034) destroys a set card the same way.
+On a real device, the user tested this build in Delta on iOS: it works.
 
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the
