@@ -465,3 +465,8 @@
   trampolines shift the timing enough that this frame ended in the middle of a swap (one card briefly in two
   slots). A trace per frame showed the right counts one frame later. `npc_deck.lua` now logs once two frames
   in a row hold the same cards.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 124/124 against `gods-3t` (105 before, plus 19 Extra Deck checks), every
+    control comparison as expected;
+  - `gods-3t-fx` is `9372e6d5...` (`.bps` 74,253 bytes), the same ROM and `.bps` from two fresh work dirs;
+  - `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .` pass.

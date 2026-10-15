@@ -613,5 +613,109 @@
       "patch": "gods-3t-fx.bps (2082fb6f...)",
       "result": "works"
     }
+  },
+  "extra_deck_rituals": {
+    "decisions": "the user approved the plan: Ritual monsters live in the Fusion Deck (EDS's Extra Deck) like Fusion monsters; the Ritual Magic cards summon them from there (Tributes and the level rule unchanged, the hand path kept); Senju of the Thousand Hands searches a Ritual Magic card instead; Cyber-Stein keeps to Fusion monsters; old saves are moved; only in gods-3t-fx (patch_extra_deck_rituals.py, src/extra_deck_rituals.c)",
+    "design": {
+      "predicate": "IsExtraDeckMonster: a monster type (CARD_TYPE_IS_MONSTER) that is not Divine, with stats kind Fusion or Ritual",
+      "edits": "16 anchored edits in 12 files: DeckEdit_IsFusionMonster, DeckEdit_BeginCardMove and DeckEdit_UpdateCardMove (copy counts), DeckEdit_Update (Side Deck refusal), AddCardNumberToDeckTop, IsFusionMonster, AddCardToHand, DuelCmd_ReturnGraveyardCardToHand, HandHasRitualMonster, EffectRitualSummonResolve, EffectCyberSteinPrepare, EffectCyberSteinResolve, CollectEffectTargets (Cyber-Stein, Senju), EffectAddRitualCardToHandResolve, GameInit",
+      "save_migration": "GameInit, right after ReadSram: with a valid checksum, the saved Deck's Ritual monsters move to the saved Fusion Deck (the trunk when it is full or at the copy limit), then UpdateSaveChecksum",
+      "card_text": "Senju of the Thousand Hands (apply_gods.py --text 3, SENJU_TEXT_3T)"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "9372e6d50a857a1131e0c72785f5ae16bf53a486",
+      "patch_bytes": 74253,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "hooks": "106 changed functions (96 before), 6 new units"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --control gods-3t.gba",
+    "suite_result": "124/124: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck, 7 dialogue, 28 deck-tuning and 19 Extra Deck checks; every control comparison as expected (17 not compared: the 15 base checks, and Rex's and Kaiba's second-deck checks); the second-deck and tuning checks expect the rituals in the CPU's Fusion Deck",
+    "oracles": [
+      {
+        "check": "Bakura's Dokurorider, Mako's Fortress Whale and Pegasus's two Relinquished load into the CPU's Fusion Deck (and the tuned and second decks card for card, with rituals in the Fusion Deck)",
+        "extra_deck_build": "pass (3 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: To Main Deck files Black Luster Soldier in the saved Fusion Deck (deck 40, fusion 1); To Trunk takes it back out",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: Black Luster Soldier can't go to the Side Deck",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: a Normal monster still goes to the Side Deck; Obelisk to the Main Deck",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "passes"
+      },
+      {
+        "check": "save_migration.lua: a save with Black Luster Soldier, Magician of Black Chaos and Relinquished in its Deck, written to SRAM, boots with them in its Fusion Deck and a valid checksum",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "the same with a full Fusion Deck: the ritual goes to the trunk",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "a save without rituals boots unchanged, with a valid checksum",
+        "extra_deck_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Black Illusion Ritual summons Relinquished from the Fusion Deck, tributing the monster in zone 0",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Black Illusion Ritual with Relinquished in the hand",
+        "extra_deck_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Black Illusion Ritual summons Relinquished from its Fusion Deck (a hand of Level 8s, so it doesn't summon to attack first)",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Black Luster Soldier, bounced by the CPU's Hane-Hane, goes back to the Fusion Deck",
+        "extra_deck_build": "pass",
+        "control": "fails (to the hand)"
+      },
+      {
+        "check": "Senju of the Thousand Hands adds a Ritual Magic card from the deck; its new text is in the ROM",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Cyber-Stein with only Black Luster Soldier in the Fusion Deck can't be activated",
+        "extra_deck_build": "pass",
+        "control": "fails (pays 5000 LP and summons it)"
+      },
+      {
+        "check": "Cyber-Stein with Black Luster Soldier and Blue-Eyes Ultimate Dragon summons Blue-Eyes Ultimate Dragon",
+        "extra_deck_build": "pass",
+        "control": "fails (summons Black Luster Soldier)"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: the ritual summon from the Fusion Deck, the bounce back to it, Senju's Ritual Magic prompt and list, Cyber-Stein's list on the old build, Deck Edit's statement (Main Deck 40, Fusion Deck 1)",
+      "on the build without the feature, To Trunk does nothing for a ritual in the saved Fusion Deck (the limit the README warns about)",
+      "the CPU doesn't play a Ritual Magic card on a turn it Normal Summons to attack, on either build: a gAiState trace shows the Normal Summon ends Main Phase 1, and Main Phase 2 plays no spells",
+      "npc_deck.lua race found and fixed: the CPU's shuffle spans frames, and the first full run read Kaiba's deck mid-swap; it now logs once two frames hold the same cards"
+    ],
+    "not_verified": [
+      "a real device",
+      "Gale Dogra sending a ritual to the Graveyard (it lists every Fusion Deck card, unchanged code)",
+      "a Link Battle",
+      "every ritual recipe: Black Illusion Ritual was played for the player and the CPU; the others share the same code and table"
+    ]
   }
 }
