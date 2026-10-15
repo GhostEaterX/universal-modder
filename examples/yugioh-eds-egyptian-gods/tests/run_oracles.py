@@ -30,8 +30,8 @@ checks also run on a control ROM, where each check says what must happen there:
     (dialogue.lua) must be shown to their new last page, and the other result lines must be as there;
   - with --deck-tuning, the same control for the CPU deck tuning: each tuned deck must load card for card as
     in the checkout's deck_lists.json (the control has the old decks), and the CPU must play the cards the
-    tuning brings in that it didn't hold before (recruiters, Elegant Egotist, Toon Mermaid, Fissure), which
-    it does on both;
+    tuning brings in that it didn't hold before (recruiters, Elegant Egotist, Toon Mermaid, Fissure,
+    Polymerization), which it does on both;
   - with --extra-deck-rituals, the same control for the Ritual monsters in the Extra Deck: the CPU's rituals
     load into its Fusion Deck (the decks of the two suites above expect that too), Deck Edit files them there
     and refuses them the Side Deck, a save from before moves them there at boot (save_migration.lua), the
@@ -360,6 +360,10 @@ def deck_tuning_suite(rituals=False):
         check("deck tuning: the CPU's Fissure destroys Blue-Eyes", E, "duel_main1", 4000, END_TURN_KEYS,
               {"P_ZONES": "0:82", "C_HAND": "230,1,1,1,1", "P_HAND": "1,1,1,1,1"},
               r"P 0,0,0,0,0 C [^\n]*grave 1 1", control="passes"),
+        # Kaiba's Polymerization: three Blue-Eyes in hand, Blue-Eyes Ultimate Dragon in the Fusion Deck
+        check("deck tuning: Polymerization brings Blue-Eyes Ultimate Dragon", E, "duel_main1", 4000, END_TURN_KEYS,
+              {"C_HAND": "552,82,82,82,82", "C_FUSION": "81", "P_HAND": "1,1,1,1,1"},
+              r"C 81,0,0,0,0 [^\n]*grave 0 4 links P\{\} C\{\} fusion P\{\} C\{\}", control="passes"),
     ]
 
 

@@ -44,6 +44,8 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   - The rest trade generic cards for ones that fit the duelist: Time Wizard for Joey, Fissure and Giant Rat for
     Rex, Barrel Dragon for Espa Roba, Mother Grizzly for Mako, and Harpie Lady Sisters for Mai, so that her
     Elegant Egotist combo can finish.
+  - Kaiba gets a Polymerization, so his two Blue-Eyes Ultimate Dragons can come out without Cyber-Stein: the
+    CPU fuses them when it holds three Blue-Eyes White Dragons.
   - Every new card is one the CPU plays.
 - **Ritual monsters in the Extra Deck (`gods-3t-fx.bps`):** the game's Extra Deck is the Fusion Deck: up to 20
   cards beside your 40-60-card Deck, never drawn. Ritual monsters now live there too, like Fusion monsters:
@@ -318,7 +320,7 @@ region still fits.
 | Strings | Snatch Steal → Call Of The Haunted |
 | Umbra & Lumis | Spellbinding Circle, Horn of Heaven → Mask of Darkness ×2; Snatch Steal → Reaper of the Cards; Gemini Elf ×2 → La Jinn ×2 |
 | Marik | Snatch Steal → Invader of the Throne; Sebek's Blessing → Call Of The Haunted |
-| Kaiba | Solemn Judgment → Negate Attack; Snatch Steal → Premature Burial; Sebek's Blessing ×2 → Lord of D., Koumori Dragon |
+| Kaiba | Solemn Judgment → Negate Attack; Snatch Steal → Premature Burial; Sebek's Blessing ×2 → Lord of D., Polymerization |
 | Ishizu | Metalmorph ×2 → Numinous Healer ×2; Solemn Judgment, Horn of Heaven → Negate Attack ×2 |
 | Shadi | Solemn Judgment → Reaper of the Cards |
 | Yami Bakura | Kunai with Chain → Reaper of the Cards; a Heavy Storm → Mystic Tomato; Vorse Raider ×3 → La Jinn ×3 |
@@ -333,6 +335,10 @@ region still fits.
 - the Gods;
 - the CPU's scripted combos (Cyber-Stein, the Magnet Warriors and Valkyrion, Toon World);
 - the Exodia engines (Rare Hunter keeps Witch of the Black Forest and Sangan).
+
+**Kaiba's Polymerization:** his Fusion Deck holds two Blue-Eyes Ultimate Dragons, but the original deck has no
+Polymerization, so only his scripted Cyber-Stein play (5000 LP) could bring one out. Polymerization is on the
+CPU's spell list, and it fuses as soon as three Blue-Eyes White Dragons are in its hand or on its field.
 
 **Mai's combo:** the CPU already plays Elegant Egotist with a Harpie Lady out. The card brings Harpie Lady
 Sisters from the deck, and Mai's deck had none, so the combo could never finish.
@@ -576,6 +582,7 @@ find.
 | With a Harpie Lady out, the CPU plays Elegant Egotist and brings Harpie Lady Sisters from its deck | pass | pass |
 | The CPU plays Toon World (1000 LP), then summons Toon Mermaid | pass | pass |
 | The CPU's Fissure destroys your face-up Blue-Eyes | pass | pass |
+| With three Blue-Eyes in hand, the CPU plays Polymerization and summons Blue-Eyes Ultimate Dragon (then attacks for 4500) | pass | pass |
 
 The behaviour checks pass on the old build too: the CPU could always play these cards; its old decks just
 didn't hold them. On a real device, the user tested the tuned build in Delta on iOS: it works.

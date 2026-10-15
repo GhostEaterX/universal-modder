@@ -186,7 +186,7 @@ DECK_TUNING_3T = {
         (1160, 0, 1),  # Premature Burial
         (1179, 2, 0),  # Sebek's Blessing
         (740, 0, 1),   # Lord of D.
-        (30, 2, 3),    # Koumori Dragon
+        (1003, 0, 1),  # Polymerization, so the two Blue-Eyes Ultimate Dragons can come out without Cyber-Stein
     ],
     (O, 17): [   # Ishizu Ishtar
         (657, 2, 0),   # Metalmorph
