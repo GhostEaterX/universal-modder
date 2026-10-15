@@ -473,3 +473,16 @@
 
 ## 2026-10-15: Extra Deck rituals on a real device
 - **Delta on iOS (user's test):** `gods-3t-fx` `9372e6d5...` (the Ritual monsters in the Extra Deck) works.
+
+## 2026-10-15: a Polymerization for Kaiba (in `gods-3t-fx`)
+- **User's ask:** give Kaiba a Polymerization so his Blue-Eyes Ultimate Dragons can come out. His Fusion Deck
+  has two, but the original deck had no Polymerization, so only the scripted Cyber-Stein play (5000 LP) could
+  summon one.
+- **The change:** `DECK_TUNING_3T`. His second dead Sebek's Blessing becomes Polymerization instead of a third
+  Koumori Dragon, which stays at two. Still 63 cards in 26 decks, one for one; the ROM differs from
+  `9372e6d5...` in 18 bytes of the deck table only.
+- **The CPU:** Polymerization is on its generic spell list. With three Blue-Eyes in hand (so it can't summon to
+  attack first) it plays Polymerization, summons Blue-Eyes Ultimate Dragon and attacks for 4500. A new tuning
+  check covers it (it passes on the old build too: the CPU could always fuse).
+- **Results:** the `gods-3t-fx` suite is 125/125 against `gods-3t`; `gods-3t-fx` is `27e5fdee...` from two fresh
+  work dirs.

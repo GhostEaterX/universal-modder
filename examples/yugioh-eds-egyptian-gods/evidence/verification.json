@@ -723,5 +723,32 @@
       "patch": "gods-3t-fx.bps (9372e6d5...)",
       "result": "works"
     }
+  },
+  "kaiba_polymerization": {
+    "decisions": "the user asked for a Polymerization in Kaiba's deck so his two Blue-Eyes Ultimate Dragons can come out; his second Sebek's Blessing (dead for the CPU) becomes Polymerization instead of a third Koumori Dragon (DECK_TUNING_3T, still 63 cards in 26 decks, one for one)",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "27e5fdeeb39f652fc4c15f2103f57695e467a827",
+      "patch_bytes": 74253,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "diff_from_previous": "18 bytes, all in the CPU deck table (0x0819D99C-0x0819D9CA), against 9372e6d5..."
+    },
+    "suite_result": "125/125 against gods-3t: the 124 checks before plus 'Polymerization brings Blue-Eyes Ultimate Dragon'; every control comparison as expected (17 not compared)",
+    "oracles": [
+      {
+        "check": "Kaiba's tuned deck loads card for card, with Polymerization and two Koumori Dragons",
+        "build": "pass",
+        "control": "fails (the old deck)"
+      },
+      {
+        "check": "the CPU with Polymerization and three Blue-Eyes White Dragons in hand, Blue-Eyes Ultimate Dragon in its Fusion Deck, plays Polymerization and summons it (and attacks for 4500)",
+        "build": "pass",
+        "control": "passes"
+      }
+    ],
+    "not_verified": [
+      "a real device",
+      "Kaiba drawing into three Blue-Eyes in a played duel (rare with three in 40 cards)"
+    ]
   }
 }

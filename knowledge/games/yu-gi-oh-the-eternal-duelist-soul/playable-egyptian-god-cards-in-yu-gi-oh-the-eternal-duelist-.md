@@ -230,6 +230,8 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **The swaps:** 63 cards in 26 decks, one for one (`DECK_TUNING_3T` in `apply_gods.py`, before/after counts
   per deck). Each new card is one the CPU plays. Mai's deck now has the Harpie Lady Sisters that her scripted
   Elegant Egotist play fetches; before, the combo could never finish.
+  Kaiba's deck gets a Polymerization: his two Blue-Eyes Ultimate Dragons sat in his Fusion Deck with only the
+  scripted Cyber-Stein play to bring them out.
 - **Checks:** the 21 tuned regular decks load card for card (fail on the old build). The recruiters, Elegant
   Egotist, Toon World with Toon Mermaid and Fissure each work in a scripted CPU turn (pass on both builds).
 - **On a real device:** the user tested the tuned build in Delta on iOS: it works.
