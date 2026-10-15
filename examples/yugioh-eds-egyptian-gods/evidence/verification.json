@@ -458,5 +458,55 @@
       "patch": "gods-3t-fx.bps",
       "result": "Ra can't be revived"
     }
+  },
+  "second_decks": {
+    "decisions": "the Tier 1 duelists (Yugi, Tea, Joey, Tristan, Bakura) play their second deck (gOpponentAltDecks, never loaded by the original game) once the player's record against them reaches 10 wins; only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d",
+      "patch_bytes": 67259,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer",
+        "god_rules",
+        "second_decks"
+      ],
+      "reproduced": "the same SHA-1 from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt from a fresh work dir match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --control gods-3t.gba",
+    "suite_result": "70/70: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck checks; every control comparison as expected",
+    "oracles": [
+      {
+        "check": "second decks: Yugi / Tea / Joey / Tristan / Bakura at 10 wins: the CPU's deck and Fusion Deck are the second deck from deck_lists.json, card for card",
+        "second_decks_build": "pass (5 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "second decks: Tea at 9 wins keeps her deck",
+        "second_decks_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Rex at 10 wins (no second deck) keeps his deck",
+        "second_decks_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Kaiba at 10 wins keeps his deck, with Obelisk",
+        "second_decks_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "code: OpponentUsesSecondDeck compiles to (opponent - 1) <= 4 and (duelRecords[opponent].wins & 0x7FF) > 9; Campaign_SetupDuel passes its result to LoadOpponentDeck",
+      "smoke: Joey at 10 wins through a whole duel against a player who only ends turns; the CPU summoned Tiger Axe, Sinister Serpent and Dragon Zombie from the second deck and won"
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "reaching 10 wins by playing (the tests set the record in RAM)"
+    ]
   }
 }

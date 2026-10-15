@@ -352,3 +352,7 @@
 - **Smoke test:** Joey at 10 wins through a whole duel, the player only ending turns: the CPU summoned Tiger Axe,
   Sinister Serpent and Dragon Zombie from the second deck and won. The first try stalled in the player's Draw
   Phase: a B, A pattern doesn't draw; A, B, A, B, A every 150 frames ends turns.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 70/70 (18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second
+    decks) against `gods-3t`, every control comparison as expected;
+  - `gods-3t-fx` is `637b7bd6...` from two fresh work dirs; `gods-3t` and `gods-fx` rebuild unchanged.
