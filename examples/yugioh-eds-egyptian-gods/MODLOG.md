@@ -312,3 +312,21 @@
   - Monster Reborn is Activate (two RIGHTs), OK, then LEFT to the list's "designate" icon;
   - `deck_edit.lua` puts cards in the Trunk before Deck Edit builds its lists, and reads the shown list (`gDeckEdit.lists[1].trunk`);
   - `pack_viewer.lua` can put any pack in the pick screen's centre slot (`PICK_PACK`).
+
+## 2026-10-15: summon rules on a real device; the CPU's aces
+- **Delta on iOS (user's test):** in `gods-3t-fx`, Ra can't be revived. The End Phase rule hasn't been checked
+  on the device.
+- **The user's question: do the duelists have boss monsters?** From the original deck lists
+  (`deck_lists.json`) and the AI code:
+  - most of the 24 decks have a signature ace: Kaiba's three Blue-Eyes, Yugi's Dark Magician and Buster
+    Blader, Joey's Red-Eyes, Pegasus's Toons and Relinquished, Mai's Harpies, Arkana's three Dark Magicians;
+  - the CPU has scripted plays for five of them (`AiChooseStrategy`): Cyber-Stein into Blue-Eyes Ultimate
+    Dragon (Kaiba), Valkyrion from the three Magnets (Yami Yugi), Harpie Lady into Elegant Egotist (Mai),
+    Toon World (Pegasus), and an Exodia flag for Rare Hunter (`LoadOpponentDeck`);
+  - Fusion monsters in a CPU list go to its Fusion Deck (`AddCardNumberToDeckTop`). Kaiba's Blue-Eyes Ultimate
+    Dragons come out only through Cyber-Stein: his deck has no Polymerization;
+  - the second decks of Yugi, Tea, Joey, Tristan and Bakura (`gOpponentAltDecks`) are never used: the one
+    caller passes 0;
+  - Marik's original deck has no ace (Millennium Golem and Dragon Seeker at 2000 ATK); this mod's Ra is its
+    only big monster. The Duel Computer, the last tier, tops out at Gemini Elf: a Morphing Jar and Mask of
+    Darkness deck.

@@ -352,9 +352,11 @@ after the List Filter; Found in is read off the text canvas, as yellow pixels.
 | Card Detail from Deck Edit has Found in ("Found in: Vol.7 12.1% (locked)" for 7 Colored Fish) | pass | fails |
 | Card Detail inside a duel has no Found in | pass | pass |
 
-Not yet checked for the rules: a real device; Call of the Haunted, Premature Burial, The Shallow Grave and
-Spear Cretin on Ra (they read the same list as Monster Reborn); Time Machine on Ra (its own check, reviewed
-in the code only).
+On a real device: in Delta on iOS, the user confirmed that Ra can't be revived.
+
+Not yet checked for the rules: the End Phase rule on a real device; Call of the Haunted, Premature Burial,
+The Shallow Grave and Spear Cretin on Ra (they read the same list as Monster Reborn); Time Machine on Ra (its
+own check, reviewed in the code only).
 
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds

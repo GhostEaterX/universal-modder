@@ -194,6 +194,8 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
     Monster Reborn, Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin, for the player
     and the CPU.
   - The End Phase hook reads the card word's `specialSummoned` bit, on both sides.
+  - On a real device (Delta on iOS), the user confirmed that Ra can't be revived. The End Phase rule hasn't
+    been checked there.
 - **Quality of life:**
   - the pick screen and the pack list show "23/40 owned", and each row NEW or the copies owned;
   - every Card Detail outside a duel ends with the packs that hold the card;

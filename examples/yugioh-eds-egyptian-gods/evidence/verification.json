@@ -447,9 +447,16 @@
       "screenshots: 8/40 owned on the pick band; x1/x3 marks; Obelisk's row in The Final Duelist; Obelisk's Card Detail with the new text and Found in; Deck Edit sorted by ATK with the Gods first; Found in for 7 Colored Fish in Deck Edit; a revived Obelisk zoomed and sent away in the End Phase"
     ],
     "not_verified": [
-      "on a real device (Delta)",
+      "the End Phase rule and the quality-of-life changes on a real device (Delta)",
       "Time Machine on Ra (code-reviewed only: Time Machine is the one revival without CanReviveGraveyardCard)",
       "Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin on Ra (they use the same CanReviveGraveyardCard list as Monster Reborn, which is tested)"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps",
+      "result": "Ra can't be revived"
+    }
   }
 }
