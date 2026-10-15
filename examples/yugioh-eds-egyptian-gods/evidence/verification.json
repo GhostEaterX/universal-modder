@@ -557,5 +557,55 @@
       "patch": "gods-3t-fx.bps (8710dd2f...)",
       "result": "works"
     }
+  },
+  "deck_tuning": {
+    "decisions": "the user approved a per-duelist change list: 63 cards in 26 of the 29 CPU decks, one for one; the 42 copies the CPU can never play (Snatch Steal x15, Spellbinding Circle x5, Kunai with Chain x4, Solemn Judgment x4, Horn of Heaven x3, Sebek's Blessing x3, Metalmorph x3, Time Machine x2, 7 Completed x2, Megamorph x1 outside the Cyber-Stein combo) and some generic cards give way to themed cards the CPU plays; only in gods-3t-fx (apply_gods.py --text 3, DECK_TUNING_3T)",
+    "dead_card_method": "a Magic/Trap card is playable only if a rule plays, chains or activates it: gAiGenericSpells, gAiEquipSpells, gAiSimpleSpells, AiTryPlaySpellTrap, AiChainSetCard, AiSelectUsableSpellTrap, AiShouldActivateSetCard; Snatch Steal confirmed in the emulator (CPU with Snatch Steal and a Summoned Skull in hand against a Blue-Eyes sets a monster; Change of Heart in the same setup takes the Blue-Eyes and attacks); Upstart Goblin confirmed played",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88",
+      "patch_bytes": 67742,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt after the apply_gods.py change match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --control gods-3t.gba",
+    "suite_result": "105/105: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck, 7 dialogue and 28 deck-tuning checks (21 decks card for card, 7 CPU plays); every control comparison as expected (17 not compared: the 15 base checks, and Rex's and Kaiba's second-deck checks, whose decks differ on the control)",
+    "oracles": [
+      {
+        "check": "the 21 tuned regular decks load card for card (npc_deck.lua against the checkout's deck_lists.json); the five second decks through the second-deck checks",
+        "tuned_build": "pass (21 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Giant Rat, Mother Grizzly, Flying Kamakiri #1 and Mystic Tomato, destroyed in battle, summon Little D, Penguin Knight, Harpie Lady and Armored Zombie from the CPU's deck",
+        "tuned_build": "pass (4 checks)",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Elegant Egotist with a Harpie Lady out and brings Harpie Lady Sisters from its deck",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Toon World (1000 LP) and summons Toon Mermaid",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Fissure destroys the player's face-up Blue-Eyes",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Rex and Kaiba at 10 wins keep their (now tuned) decks",
+        "tuned_build": "pass",
+        "control": "not compared (the control has the old decks)"
+      }
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "the CPU playing the other swapped-in cards in a duel (Time Wizard, Barrel Dragon, Call Of The Haunted, Negate Attack, Invader of the Throne, Trap Master, Mask of Darkness, Reaper of the Cards, Premature Burial, Numinous Healer, Gift of The Mystical Elf, Skull Dice): each has a rule in its code, but only the cards above were played in scripted turns"
+    ]
   }
 }

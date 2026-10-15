@@ -406,3 +406,9 @@
     plays Toon World, then Toon Mermaid; Fissure takes the face-up Blue-Eyes.
   - Rex's and Kaiba's "keeps his deck" second-deck checks are now not compared on the control, whose decks
     differ.
+- **Results:**
+  - the whole `gods-3t-fx` suite is 105/105 against `gods-3t`, every control comparison as expected;
+  - `gods-3t-fx` is `2082fb6f...`, the same ROM and `.bps` from two fresh work dirs;
+  - `gods-3t` and `gods-fx` rebuild unchanged.
+- **Gotcha, editing a running script:** `sh` reads `build.sh` as it goes, so editing its comments during a
+  build broke the tail ("Syntax error") after the ROM was already written. Don't touch a script while it runs.
