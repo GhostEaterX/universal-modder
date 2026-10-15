@@ -330,3 +330,25 @@
   - Marik's original deck has no ace (Millennium Golem and Dragon Seeker at 2000 ATK); this mod's Ra is its
     only big monster. The Duel Computer, the last tier, tops out at Gemini Elf: a Morphing Jar and Mask of
     Darkness deck.
+
+## 2026-10-15: second decks (in `gods-3t-fx`)
+- **User's ask:** after the player beats a Tier 1 duelist 10 times, that duelist plays their second deck
+  (`gOpponentAltDecks`), only in `gods-3t-fx`.
+- **Why the decks were dead:** `LoadOpponentDeck(useAltDeck)` has one caller, `Campaign_SetupDuel`, which
+  passes a constant 0 (`mov r0, #0` before the `bl`). No other code reads the table. The loader and its caller
+  are separate units, so the compiler kept the branch and the table.
+- **The change:**
+  - `src/second_decks.c` (a new unit): `OpponentUsesSecondDeck()` is 1 for duelists 1-5 with
+    `duelRecords[id].wins >= 10`. The range check matters: the table has 6 entries, so another duelist would
+    read past it.
+  - `patch_second_decks.py`: one edit, `LoadOpponentDeck(0)` becomes `LoadOpponentDeck(OpponentUsesSecondDeck())`.
+  - `build.sh` runs it for `--tributes 3 --effects` only.
+- **Data check:** no first or second Tier 1 deck goes over the ban list, so `RemoveOverLimitDeckCards` (which
+  drops every copy of a card over its limit, not just the extras) leaves them whole. Joey's second deck puts
+  B. Skull Dragon in his Fusion Deck; the deck keeps Polymerization, Summoned Skull and two Red-Eyes.
+- **Harness:** `npc_deck.lua` takes `WINS` (the record against `OPP`, poked every frame until the deck loads)
+  and logs the deck and the Fusion Deck sorted. `run_oracles.py --second-decks` compares them with the
+  checkout's `deck_lists.json`.
+- **Smoke test:** Joey at 10 wins through a whole duel, the player only ending turns: the CPU summoned Tiger Axe,
+  Sinister Serpent and Dragon Zombie from the second deck and won. The first try stalled in the player's Draw
+  Phase: a B, A pattern doesn't draw; A, B, A, B, A every 150 frames ends turns.

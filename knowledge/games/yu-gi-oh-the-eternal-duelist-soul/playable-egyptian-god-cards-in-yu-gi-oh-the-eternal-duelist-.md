@@ -204,6 +204,17 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **Checks:** 13 rule and Deck Edit oracles plus 4 more viewer checks, each failing on the build without
   them (or passing on both, for the regressions).
 
+### Also in the fourth build: the Tier 1 duelists' second decks
+- **Found, not added:** the ROM has a second, stronger deck for each Tier 1 duelist (Yugi, Tea, Joey,
+  Tristan, Bakura): `gOpponentAltDecks`, next to `gOpponentDecks`. `LoadOpponentDeck(useAltDeck)` can load
+  it, but its only caller, `Campaign_SetupDuel`, passes a constant 0.
+- **The change:** one edit (`patch_second_decks.py`, a new unit `second_decks.c`). The call passes 1 when
+  the opponent is duelist 1-5 and `gSaveData.duelRecords[opponent].wins` (bits 0-10 of the word at
+  `0x02011C20 + 0x20D0 + id*4`) is 10 or more.
+- **Checks:** 8 oracles read the CPU's deck and Fusion Deck after `LoadOpponentDeck` and compare them, sorted,
+  with the checkout's `deck_lists.json`. The five second decks fail on the build without the change; Tea at 9
+  wins, Rex (no second deck) and Kaiba at 10 wins pass on both.
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -311,6 +322,9 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 26. **Telling a duel from the rest:** `gDuelScreen.active` is cleared before a duel's Card Detail opens, and
     `gDuelCtrl.phase` is never reset. Test `gMain.callback` and its step: `CB_Campaign` step 4, or
     `CB_LinkBattle` step 3.
+27. **The ROM has data the game never uses.** The CPU deck loader takes a "second deck" flag that its only
+    caller hard-codes to 0. The compiler can't see that across units, so the alternate table stays linked.
+    Before assuming data is live, check the constant arguments at a function's only call site.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the
@@ -325,5 +339,7 @@ minute; an oracle suite with its control takes a few minutes.
 ## Open questions
 - The TCG summon rules (a Special Summoned Obelisk or Slifer leaves in the End Phase, Ra can't be Special
   Summoned) are only in the three-Tribute effects build; `gods-fx` doesn't have them.
+- What the second decks were meant for isn't in the ROM. Only the five duelists open from day one have them,
+  which fits "early opponents come back stronger", but that's a guess.
 - The hook builder is generic enough for any non-relocatable GBA decomp. It could become a technique note
   or a `um` command.

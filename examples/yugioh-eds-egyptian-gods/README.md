@@ -31,6 +31,11 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   back to the pick screen.
 - **Found in (`gods-3t-fx.bps`):** every Card Detail outside a duel (Trunk, Deck Edit, the pack list) ends with
   the packs that hold the card and its chance in each, e.g. "Found in: Vol.7 12.1% (locked)".
+- **Second decks (`gods-3t-fx.bps`):** the original game holds a stronger second deck for each of the five
+  duelists you can face from the start (Yugi, Tea, Joey, Tristan and Bakura), but never loads it. Beat one of
+  them 10 times (the wins on the opponent-select screen) and from the next duel on they play their second
+  deck: Yugi brings the Magnet Warriors and Valkyrion, Joey B. Skull Dragon and Red-Eyes Black Metal Dragon,
+  and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -117,9 +122,12 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `27007baa47952ebfe051c3f1eaa399eef011ef99`, with the summon rules, the pack
-  viewer and Found in. Earlier versions: `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36` (the first pack viewer)
-  and `471f4347758993363e2bbaac30167f1635575c43` (effects only, the one the user ran in Delta).
+- `gods-3t-fx.gba`: SHA-1 `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`, with the summon rules, the pack
+  viewer, Found in and the second decks. Earlier versions:
+  - `27007baa47952ebfe051c3f1eaa399eef011ef99`: before the second decks; the user checked the summon rules on
+    it in Delta;
+  - `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36`: the first pack viewer;
+  - `471f4347758993363e2bbaac30167f1635575c43`: effects only, the one the user first ran in Delta.
 
 ### How the three-Tribute build works
 `scripts/patch_three_tributes.py` runs after `patch_source.py`. The engine already had a third Tribute slot
@@ -197,6 +205,38 @@ The other Special Summons (from the deck, the hand or the Fusion Deck) already e
 4000-ATK Divine monster, or name their cards. The engine marks every Special Summon on the card
 (`specialSummoned`), which is what the End Phase reads. `apply_gods.py --text 3` adds the two rules to the
 Gods' card text.
+
+### How the second decks work (gods-3t-fx)
+The game has two tables of CPU decks: `gOpponentDecks`, one deck per duelist, and `gOpponentAltDecks`, a
+second deck for each of the five Tier 1 duelists. `LoadOpponentDeck(useAltDeck)` can read either, but its only
+caller, `Campaign_SetupDuel`, always passes 0, so the second decks were never played.
+`scripts/patch_second_decks.py` runs in the `gods-3t-fx` build only. It copies `src/second_decks.c` into the
+decomp as a new unit and changes that one call:
+
+```
+ Campaign_SetupDuel  (every duel against the CPU)
+    │
+    └─ LoadOpponentDeck(OpponentUsesSecondDeck())       the original: LoadOpponentDeck(0)
+          │
+          ├─ 0 ─▶ gOpponentDecks[duelist]      everyone else, and Tier 1 below 10 wins
+          └─ 1 ─▶ gOpponentAltDecks[duelist]   Yugi, Tea, Joey, Tristan, Bakura from 10 wins
+```
+
+`OpponentUsesSecondDeck` returns 1 when the opponent is duelist 1 to 5 (the second-deck table has no other
+entries) and your record against them (`gSaveData.duelRecords[duelist].wins`, the number on the
+opponent-select screen) is 10 or more. The game counts a win when a duel ends (a best-of-3 match counts once,
+at its end), so the duel after your 10th win is the first against the second deck. The decks are the game's
+own: each second deck keeps 25 to 32 of the first deck's cards and adds these.
+
+| Duelist | The second deck adds |
+|---|---|
+| Yugi | Alpha, Beta and Gamma The Magnet Warrior, Valkyrion the Magna Warrior; Raigeki, Dark Hole, Mirror Force, Change of Heart, Snatch Steal, Imperial Order, Magic Jammer; Sangan, Witch of the Black Forest ×2 |
+| Tea | Dunames Dark Witch ×2, Gemini Elf, The Unhappy Maiden, Witch of the Black Forest ×2; Dark Hole, Heavy Storm, Graceful Charity, Mirror Force, Magic Jammer, Spellbinding Circle, Trap Hole |
+| Joey | B. Skull Dragon (in his Fusion Deck; he keeps Polymerization, Summoned Skull and two Red-Eyes), Red-Eyes Black Metal Dragon with Metalmorph, a second Red-Eyes B. Dragon, Cyber-Tech Alligator, Magician of Faith, Man-Eater Bug ×2, Sinister Serpent; Harpie's Feather Duster, Gryphon Wing, Kunai with Chain |
+| Tristan | Summoned Skull, Darkfire Soldier #1, Man-Eater Bug ×2, Mr. Volcano, Nimble Momonga, Sinister Serpent; Raigeki, Dark Hole, Harpie's Feather Duster, Pot of Greed, Snatch Steal, Premature Burial, Swords of Revealing Light, Delinquent Duo |
+| Bakura | Blast Sphere, Needle Worm ×2, Witch of the Black Forest ×2; Mirror Force, Premature Burial, Weather Control |
+
+No second deck goes over the ban list, so `RemoveOverLimitDeckCards` loads each one whole.
 
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
@@ -358,6 +398,21 @@ Not yet checked for the rules: the End Phase rule on a real device; Call of the 
 The Shallow Grave and Spear Cretin on Ra (they read the same list as Monster Reborn); Time Machine on Ra (its
 own check, reviewed in the code only).
 
+The second decks have their own suite, `--second-decks` (same control). `npc_deck.lua` sets your record
+against a duelist, starts a Campaign duel against them from the main menu, and reads the CPU's deck and Fusion
+Deck once they are loaded. The expected lists come from your own `deck_lists.json`.
+
+| Check (`gods-3t-fx.gba`) | Second-deck build | Build without it |
+|---|---|---|
+| Yugi, Tea, Joey, Tristan and Bakura at 10 wins: the CPU's deck is their second deck, card for card (Joey's Fusion Deck: B. Skull Dragon) | pass | fails (the first deck) |
+| Tea at 9 wins: her first deck | pass | pass |
+| Rex at 10 wins (no second deck): his deck | pass | pass |
+| Kaiba at 10 wins: his deck, with Obelisk | pass | pass |
+
+Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
+Tiger Axe, Sinister Serpent and Dragon Zombie and won. Not yet checked for the second decks: a real device,
+and reaching 10 wins by playing (the tests set the record).
+
 Also checked:
 - **Full player path:** password → Trunk → Deck Edit → Main Deck → the player's 41-card duel deck holds
   Slifer.
@@ -372,11 +427,14 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
-- **The summon rules, the pack viewer and Found in are only in `gods-3t-fx`.** The pack list is only on the
-  pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only those pick-screen
-  packs, so a card that comes only from an event, a trade or a password says it isn't in them.
+- **The summon rules, the pack viewer, Found in and the second decks are only in `gods-3t-fx`.** The pack
+  list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
+  those pick-screen packs, so a card that comes only from an event, a trade or a password says it isn't in
+  them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
   pity counter changes after each pack.
+- **The second decks come without a notice:** nothing on screen says that a duelist switched decks. A
+  record only grows, so once a duelist has 10 wins they keep the second deck.
 - **A little lag:** drawing the pack name costs about 1 frame when the pick screen opens and when the
   covers stop sliding.
 - **The TCG summon rules are not in `gods-fx`:** there a Special Summoned Obelisk or Slifer stays, and Ra can

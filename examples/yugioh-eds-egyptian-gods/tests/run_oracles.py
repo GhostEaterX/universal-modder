@@ -5,7 +5,7 @@
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
     run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
-                   [--control gods-3t.gba]
+                   --second-decks [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -23,11 +23,15 @@ checks also run on a control ROM, where each check says what must happen there:
     must fail there, and the pick must give the same pack as there. The expected odds come from the
     checkout's own booster_packs.json, through scripts/gen_pack_odds.py;
   - with --god-rules, the same control for the Gods' summon rules and Deck Edit (effects.lua, deck_edit.lua):
-    every rule check must fail there, and the regressions must pass.
+    every rule check must fail there, and the regressions must pass;
+  - with --second-decks, the same control for the Tier 1 duelists' second decks (npc_deck.lua): a duelist
+    beaten 10 times must play the second deck, which the control never loads, and the other decks must be
+    the same as there. The expected decks come from the checkout's own deck_lists.json.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
 import argparse
+import csv
 import json
 import os
 import re
@@ -256,6 +260,43 @@ def rules_suite():
     ]
 
 
+def cpu_deck_re(which, duelist):
+    """The CPU's deck as npc_deck.lua logs it, from the checkout's deck_lists.json: deck `duelist` of
+    "opponent_decks" (the first decks) or "alternate_decks" (the second decks), Fusion monsters in the Fusion
+    Deck. No Tier 1 deck goes over the ban list, so RemoveOverLimitDeckCards takes nothing out."""
+    def regex(decomp):
+        assets = decomp / "assets"
+        with open(assets / "tables/deck_lists.json") as f:
+            cards = json.load(f)[which][duelist]["cards"]
+        with open(assets / "cards/number_to_id.json") as f:
+            number_to_id = json.load(f)
+        with open(assets / "cards/stats.csv") as f:
+            stats = {int(r["id"]): r for r in csv.DictReader(f)}
+        deck, fusion = [], []
+        for number, _ in cards:
+            card = number_to_id[number]
+            s = stats[card]
+            (fusion if int(s["type"]) <= 20 and s["kind"] == "2" else deck).append(card)
+        line = lambda name, ids: re.escape(f"{name}: {' '.join(map(str, sorted(ids)))}")
+        return line("sorted ids", deck) + r"\n\[lua\] " + line("fusion ids", fusion) + r"(\n|$)"
+    return regex
+
+
+TIER1 = ((1, "Yugi"), (2, "Tea"), (3, "Joey"), (4, "Tristan"), (5, "Bakura"))
+
+
+def second_decks_suite():
+    deck = lambda which, opp, wins: dict(script="npc_deck.lua", state="main_menu", frames=1500, keys=NPC_KEYS,
+                                         env={"OPP": str(opp), "WINS": str(wins)}, regex=cpu_deck_re(which, opp))
+    return [check(f"second decks: {name} at 10 wins plays it", **deck("alternate_decks", opp, 10))
+            for opp, name in TIER1] + [
+        check("second decks: Tea at 9 wins keeps her deck", control="passes", **deck("opponent_decks", 2, 9)),
+        check("second decks: Rex at 10 wins keeps his deck", control="passes", **deck("opponent_decks", 6, 10)),
+        check("second decks: Kaiba at 10 wins keeps his deck", control="passes",
+              **deck("opponent_decks", 16, 10)),
+    ]
+
+
 def no_set(keys):
     """A God's hand menu in an effects build: Card View, Summon (no Set), so Summon is one RIGHT away."""
     return keys.replace("45 RIGHT; 55 RIGHT; 70 A", "45 RIGHT; 70 A")
@@ -367,6 +408,7 @@ def main():
                          "build without effects (effects suites)")
     ap.add_argument("--pack-viewer", action="store_true", help="the ROM has the pack viewer (gods-3t-fx)")
     ap.add_argument("--god-rules", action="store_true", help="the ROM has the Gods' summon rules (gods-3t-fx)")
+    ap.add_argument("--second-decks", action="store_true", help="the ROM has the second decks (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -380,6 +422,9 @@ def main():
     if args.god_rules:
         checks = checks + rules_suite()
         tag += "gr"
+    if args.second_decks:
+        checks = checks + second_decks_suite()
+        tag += "sd"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None

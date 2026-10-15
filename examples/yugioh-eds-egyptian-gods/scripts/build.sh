@@ -11,6 +11,7 @@
 #     be Special Summoned; Deck Edit sorts and filters the Gods as monsters;
 #   - the pack viewer: on the pick-a-pack screen after a duel, SELECT lists the centre pack's cards and each
 #     card's chance of being in the pack; Card Detail outside duels names the packs that hold the card.
+#   - the Tier 1 duelists' second decks (never loaded by the original game), once you've beaten them 10 times.
 # The .bps is the only thing to share. All four variants can live in the same work dir.
 #
 # Needs git, python3, and eds-decomp's native toolchain on PATH: run eds-decomp's tools/setup_native.sh once,
@@ -59,14 +60,15 @@ ln -sf roms/base_eng.gba "$WORK/$MOD/baserom.gba"
 
 # 4. The code: Divine counts as a monster type, Obelisk stops being a Ritual; optionally three Tributes and
 #    the Gods' effects (two new units, src/god_effects.c and data/god_effects_table.s), and for gods-3t-fx
-#    the pack viewer (src/pack_viewer.c, with its odds table generated from your booster_packs.json) and the
-#    Gods' summon rules (src/god_rules.c).
+#    the pack viewer (src/pack_viewer.c, with its odds table generated from your booster_packs.json), the
+#    Gods' summon rules (src/god_rules.c) and the second decks (src/second_decks.c).
 python3 "$HERE/patch_source.py" "$WORK/$MOD"
 if [ "$TRIBUTES" = 3 ]; then python3 "$HERE/patch_three_tributes.py" "$WORK/$MOD"; fi
 if [ "$EFFECTS" = 1 ]; then python3 "$HERE/patch_god_effects.py" "$WORK/$MOD"; fi
 if [ "$TRIBUTES" = 3 ] && [ "$EFFECTS" = 1 ]; then
     python3 "$HERE/patch_pack_viewer.py" "$WORK/$MOD"
     python3 "$HERE/patch_god_rules.py" "$WORK/$MOD"
+    python3 "$HERE/patch_second_decks.py" "$WORK/$MOD"
 fi
 
 # 5. Build both. The vanilla tree keeps the original layout; the mod tree only supplies objects.
