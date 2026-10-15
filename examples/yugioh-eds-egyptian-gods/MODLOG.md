@@ -412,3 +412,6 @@
   - `gods-3t` and `gods-fx` rebuild unchanged.
 - **Gotcha, editing a running script:** `sh` reads `build.sh` as it goes, so editing its comments during a
   build broke the tail ("Syntax error") after the ROM was already written. Don't touch a script while it runs.
+
+## 2026-10-15: deck tuning on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `2082fb6f...` (the tuned CPU decks) works.

@@ -132,7 +132,8 @@ tested ROMs byte for byte:
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
 - `gods-3t-fx.gba`: SHA-1 `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`, with the summon rules, the pack
-  viewer, Found in, the second decks, their 10th-win lines and the CPU deck tuning. Earlier versions:
+  viewer, Found in, the second decks, their 10th-win lines and the CPU deck tuning; the user ran it in
+  Delta. Earlier versions:
   - `8710dd2f4335187d5254c7a44ede052e11af77a1`: before the deck tuning; the user ran it in Delta;
   - `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`: the second decks without the new lines;
   - `27007baa47952ebfe051c3f1eaa399eef011ef99`: before the second decks; the user checked the summon rules on
@@ -526,7 +527,7 @@ find.
 | The CPU's Fissure destroys your face-up Blue-Eyes | pass | pass |
 
 The behaviour checks pass on the old build too: the CPU could always play these cards; its old decks just
-didn't hold them.
+didn't hold them. On a real device, the user tested the tuned build in Delta on iOS: it works.
 
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the

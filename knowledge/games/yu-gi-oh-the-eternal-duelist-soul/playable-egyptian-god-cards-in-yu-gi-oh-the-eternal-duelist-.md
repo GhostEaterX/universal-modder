@@ -232,6 +232,7 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
   Elegant Egotist play fetches; before, the combo could never finish.
 - **Checks:** the 21 tuned regular decks load card for card (fail on the old build). The recruiters, Elegant
   Egotist, Toon World with Toon Mermaid and Fissure each work in a scripted CPU turn (pass on both builds).
+- **On a real device:** the user tested the tuned build in Delta on iOS: it works.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

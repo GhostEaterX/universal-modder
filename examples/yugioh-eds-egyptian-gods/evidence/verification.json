@@ -604,8 +604,14 @@
       }
     ],
     "not_verified": [
-      "on a real device (Delta)",
       "the CPU playing the other swapped-in cards in a duel (Time Wizard, Barrel Dragon, Call Of The Haunted, Negate Attack, Invader of the Throne, Trap Master, Mask of Darkness, Reaper of the Cards, Premature Burial, Numinous Healer, Gift of The Mystical Elf, Skull Dice): each has a rule in its code, but only the cards above were played in scripted turns"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (2082fb6f...)",
+      "result": "works"
+    }
   }
 }
