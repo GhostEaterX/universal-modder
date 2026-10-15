@@ -384,3 +384,25 @@
   From the build's `deck_lists.json`: 22 of the 24 first decks hold at least one (not Yugi's or Tristan's),
   and all 5 second decks. None goes over the ban list for them (Heavy Storm, limit 2, appears twice in Yami
   Bakura's and Simon's), so `RemoveOverLimitDeckCards` leaves them in.
+
+## 2026-10-15: CPU deck tuning (in `gods-3t-fx`)
+- **User's ask:** adjust the existing cards before adding new ones. The top 20 cards across the CPU decks are
+  mostly the same staples (Monster Reborn in 28 of 29 decks, Change of Heart 26, Raigeki 24). The user
+  approved a per-duelist change list.
+- **Dead cards:** a strict scan counts a Magic/Trap card as playable only when some rule plays, chains or
+  activates it: the spell lists, `AiTryPlaySpellTrap`, `AiChainSetCard`, `AiShouldActivateSetCard`, the
+  strategies. That leaves 41 copies of 9 cards, plus Pegasus's Megamorph (played only in the Cyber-Stein
+  combo). Snatch Steal is the big one (15 decks): it shows up only in the lists that read the human's hand and
+  deck and in the key-card list. In the emulator, the CPU held it with a Blue-Eyes to take and set a monster
+  instead; Change of Heart in the same setup took the Blue-Eyes and attacked.
+- **The change:** `DECK_TUNING_3T` in `apply_gods.py`, applied with `--text 3`. For each deck it gives the
+  count before and after of every card that changes, so a rerun is a no-op and a ROM with other decks stops
+  the build. 63 cards in 26 decks; the lists stay sorted and the same size.
+- **Harness:**
+  - `effects.lua` takes `C_DECK`, written over the CPU's deck.
+  - A recruiter's chain link waits for A from the human player ("Chain: Activating ... Opposite"), so its
+    test presses A after the battle.
+  - Results: all four recruiters summon from the deck; Elegant Egotist brings Harpie Lady Sisters; the CPU
+    plays Toon World, then Toon Mermaid; Fissure takes the face-up Blue-Eyes.
+  - Rex's and Kaiba's "keeps his deck" second-deck checks are now not compared on the control, whose decks
+    differ.

@@ -6,11 +6,13 @@
 --   P_HAND / C_HAND    card IDs for the first hand slots; P_HANDN / C_HANDN set the hand size.
 --   P_GRAVE / C_GRAVE  card IDs for the graveyard, bottom first (replaces it).
 --   P_LP / C_LP        Life Points.
+--   C_DECK             card IDs written over the CPU's whole deck, cycling through the list (its size stays), so
+--                      a search or a recruit finds them.
 -- Each log line: the monster zones (card IDs, "s" after a face-down one), LP, hand and graveyard sizes, and
 -- the zone links of every monster that has any, as kind/count=value (Ra's paid LP is kind 14, Slifer's drain
 -- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag.
 local P = { [0] = 0x020192E4, [1] = 0x020192E4 + 0xD64 }   -- gDuelPlayers[0], [1]
-local ZONES, ZONE_SIZE, HAND, GRAVE = 0x28, 0x94, 0x684, 0x904
+local ZONES, ZONE_SIZE, HAND, GRAVE, DECK = 0x28, 0x94, 0x684, 0x904, 0x7C4
 local frame, last = 0, ""
 
 local function env(name)
@@ -48,6 +50,16 @@ local function hand(player, spec, n)
         end
     end
     if n then emu:write8(P[player] + 2, tonumber(n)) end
+end
+
+local function deck(player, spec)
+    if not spec then return end
+    local ids = {}
+    for id in spec:gmatch("%d+") do ids[#ids + 1] = tonumber(id) end
+    for i = 0, emu:read8(P[player] + 3) - 1 do
+        local a = P[player] + DECK + i * 4
+        emu:write32(a, (emu:read32(a) & ~0x1FFF) | ids[i % #ids + 1] | (player == 1 and 0x1000 or 0))
+    end
 end
 
 local function grave(player, spec)
@@ -109,6 +121,7 @@ callbacks:add("frame", function()
         hand(1, env("C_HAND"), env("C_HANDN"))
         grave(0, env("P_GRAVE"))
         grave(1, env("C_GRAVE"))
+        deck(1, env("C_DECK"))
         if env("P_LP") then emu:write16(P[0], tonumber(env("P_LP"))) end
         if env("C_LP") then emu:write16(P[1], tonumber(env("C_LP"))) end
     end

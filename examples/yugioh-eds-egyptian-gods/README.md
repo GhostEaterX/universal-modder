@@ -38,6 +38,13 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole. After that 10th win,
   their usual 10th-win line gets a new last page that says so: "I better find some new cards and train
   more."
+- **CPU deck tuning (`gods-3t-fx.bps`):** 63 cards change in 26 of the 29 CPU decks.
+  - 42 of them were cards the CPU can never play, such as Snatch Steal (in 15 decks), Spellbinding Circle and
+    Solemn Judgment.
+  - The rest trade generic cards for ones that fit the duelist: Time Wizard for Joey, Fissure and Giant Rat for
+    Rex, Barrel Dragon for Espa Roba, Mother Grizzly for Mako, and Harpie Lady Sisters for Mai, so that her
+    Elegant Egotist combo can finish.
+  - Every new card is one the CPU plays.
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -124,8 +131,9 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `8710dd2f4335187d5254c7a44ede052e11af77a1`, with the summon rules, the pack
-  viewer, Found in, the second decks and their 10th-win lines. Earlier versions:
+- `gods-3t-fx.gba`: SHA-1 `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`, with the summon rules, the pack
+  viewer, Found in, the second decks, their 10th-win lines and the CPU deck tuning. Earlier versions:
+  - `8710dd2f4335187d5254c7a44ede052e11af77a1`: before the deck tuning; the user ran it in Delta;
   - `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`: the second decks without the new lines;
   - `27007baa47952ebfe051c3f1eaa399eef011ef99`: before the second decks; the user checked the summon rules on
     it in Delta;
@@ -258,6 +266,66 @@ keeps the game's own pages; only the last page is new:
 Dialogue records are a fixed 0x304 bytes (`{u16 event; u16 speaker; char text[0x300]}`), so a longer text moves
 nothing: the ROM differs from the build without the lines in those five records only. `$c$p` is the game's own
 "wait for A, new page" code.
+
+### How the CPU deck tuning works (gods-3t-fx)
+The CPU only plays a card that its code has a rule for: a list it tries every turn, a condition for a Trap,
+an answer to one of your cards, a flip it plans, a scripted combo. A card with no rule sits in its hand
+forever. `apply_gods.py --text 3` swaps cards in the CPU decks (`deck_lists.json`), one for one, so the deck
+region still fits.
+
+**The dead slots (42 copies).**
+
+| Card | Copies | Notes |
+|---|---|---|
+| Snatch Steal | 15 | Only on the CPU's lists for reading your hand and deck. Checked in the emulator: it holds it with your Blue-Eyes on the field and sets a monster instead |
+| Spellbinding Circle | 5 | |
+| Kunai with Chain, Solemn Judgment | 4 each | |
+| Horn of Heaven, Sebek's Blessing, Metalmorph | 3 each | |
+| Time Machine, 7 Completed | 2 each | |
+| Megamorph | 1 | Played only in Kaiba's Cyber-Stein combo, so dead in Pegasus's deck |
+
+**The swaps.** Every card brought in is one the CPU plays, and none goes over the ban list.
+
+| Deck | Out → In |
+|---|---|
+| Yugi, 2nd deck | Snatch Steal → Call Of The Haunted |
+| Tea, 2nd deck | Spellbinding Circle → Gift of The Mystical Elf |
+| Joey | Raigeki → Time Wizard (2nd copy) |
+| Joey, 2nd deck | Kunai with Chain → Time Wizard; Metalmorph → Skull Dice |
+| Tristan, 2nd deck | Snatch Steal → Invader of the Throne; Harpie's Feather Duster → Trap Master |
+| Bakura, both decks | Spellbinding Circle → Call Of The Haunted; Dark Elf → Mystic Tomato |
+| Rex Raptor | Snatch Steal, Raigeki → Fissure ×2; Witch of the Black Forest ×2 → Giant Rat ×2 |
+| Espa Roba | 7 Completed ×2 → Barrel Dragon ×2; Time Machine → Mechanicalchaser |
+| Weevil | Snatch Steal, Gemini Elf ×2 → Flying Kamakiri #1 ×3 |
+| Mako | Kunai with Chain ×2, Snatch Steal → Mother Grizzly ×3; Dark Elf → Giant Red Seasnake |
+| Mai | Snatch Steal → Harpie Lady Sisters; Witch of the Black Forest ×2 → Flying Kamakiri #1 ×2 |
+| Rare Hunter | Horn of Heaven → Negate Attack |
+| Arkana | Snatch Steal → Dark Magician Girl; Giant Soldier of Stone ×3 → Mystical Elf ×3 |
+| Strings | Snatch Steal → Call Of The Haunted |
+| Umbra & Lumis | Spellbinding Circle, Horn of Heaven → Mask of Darkness ×2; Snatch Steal → Reaper of the Cards; Gemini Elf ×2 → La Jinn ×2 |
+| Marik | Snatch Steal → Invader of the Throne; Sebek's Blessing → Call Of The Haunted |
+| Kaiba | Solemn Judgment → Negate Attack; Snatch Steal → Premature Burial; Sebek's Blessing ×2 → Lord of D., Koumori Dragon |
+| Ishizu | Metalmorph ×2 → Numinous Healer ×2; Solemn Judgment, Horn of Heaven → Negate Attack ×2 |
+| Shadi | Solemn Judgment → Reaper of the Cards |
+| Yami Bakura | Kunai with Chain → Reaper of the Cards; a Heavy Storm → Mystic Tomato; Vorse Raider ×3 → La Jinn ×3 |
+| Yami Yugi | Snatch Steal → Call Of The Haunted |
+| Duel Computer | Snatch Steal → Mask of Darkness |
+| Simon | Snatch Steal → Negate Attack |
+| Pegasus | Time Machine, Solemn Judgment, Megamorph → Toon Mermaid ×3 |
+| Grandpa | Spellbinding Circle → Negate Attack; Snatch Steal → Call Of The Haunted |
+
+**Left alone:**
+- the regular decks of Yugi, Tea and Tristan;
+- the Gods;
+- the CPU's scripted combos (Cyber-Stein, the Magnet Warriors and Valkyrion, Toon World);
+- the Exodia engines (Rare Hunter keeps Witch of the Black Forest and Sangan).
+
+**Mai's combo:** the CPU already plays Elegant Egotist with a Harpie Lady out. The card brings Harpie Lady
+Sisters from the deck, and Mai's deck had none, so the combo could never finish.
+
+**The data:** `DECK_TUNING_3T` lists each changed card's count before and after, per deck. A deck is changed
+only when it holds the "before" counts, and skipped when it already holds the "after" ones. The new lists are
+sorted, like the original ones.
 
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
@@ -443,6 +511,23 @@ says 10.
 
 All five new pages fit the text box, checked on screenshots; Joey's and Tristan's take all four of its lines.
 
+The deck tuning has its own suite, `--deck-tuning` (same control). `npc_deck.lua` checks the 21 tuned
+regular decks card for card against your `deck_lists.json`; the five second decks are covered by the
+second-deck checks, which read the same file. The CPU cards that are new to their decks get a scripted turn
+each: `effects.lua` stages the field, and its `C_DECK` writes the CPU's deck so a recruit has something to
+find.
+
+| Check (`gods-3t-fx.gba`) | Tuned build | Build without it |
+|---|---|---|
+| The 21 tuned regular decks load card for card | pass | fails (the old decks) |
+| Giant Rat, Mother Grizzly, Flying Kamakiri #1 and Mystic Tomato, destroyed in battle, summon a monster from the CPU's deck | pass | pass |
+| With a Harpie Lady out, the CPU plays Elegant Egotist and brings Harpie Lady Sisters from its deck | pass | pass |
+| The CPU plays Toon World (1000 LP), then summons Toon Mermaid | pass | pass |
+| The CPU's Fissure destroys your face-up Blue-Eyes | pass | pass |
+
+The behaviour checks pass on the old build too: the CPU could always play these cards; its old decks just
+didn't hold them.
+
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the
 10th-win lines) in Delta on iOS: it works. Not yet checked in the emulator: reaching 10 wins by playing (the
@@ -462,12 +547,21 @@ Also checked:
 
 ## Known limits
 - **Effects only in the `-fx` builds.** `gods.bps` and `gods-3t.bps` have no God effects.
-- **The summon rules, the pack viewer, Found in and the second decks are only in `gods-3t-fx`.** The pack
-  list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
+- **The summon rules, the pack viewer, Found in, the second decks and the deck tuning are only in
+  `gods-3t-fx`.** The pack list is only on the pick-a-pack screen: the fixed packs some event duels give skip it. Found in names only
   those pick-screen packs, so a card that comes only from an event, a trade or a password says it isn't in
   them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
   pity counter changes after each pack.
+- **The tuned decks trade some raw power for character:**
+  - Rex and Joey's regular deck give up Raigeki.
+  - Weevil, Umbra & Lumis and Yami Bakura trade 1900-ATK Normal monsters for themed ones with 100 to 500 less
+    ATK.
+  - Barrel Dragon and Time Wizard depend on coin tosses.
+- **Not checked in the emulator for the tuning:** the CPU playing Time Wizard, Barrel Dragon, Call Of The Haunted,
+  Negate Attack, Invader of the Throne, Trap Master, Mask of Darkness and the other swapped-in cards that have a
+  rule in its code (they are in its play lists, flip plans or Trap conditions); only the cards listed in the
+  verification table were played in scripted turns.
 - **The 10th-win line comes once:** it is shown when your record against the duelist goes from 9 to 10. A
   save that is already past 10 wins gets the second deck without the line. A record only grows, so once a
   duelist has 10 wins they keep the second deck.

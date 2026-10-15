@@ -12,7 +12,9 @@
 #   - the pack viewer: on the pick-a-pack screen after a duel, SELECT lists the centre pack's cards and each
 #     card's chance of being in the pack; Card Detail outside duels names the packs that hold the card.
 #   - the Tier 1 duelists' second decks (never loaded by the original game), once you've beaten them 10 times,
-#     and a last page for their 10th-win lines that says so.
+#     and a last page for their 10th-win lines that says so;
+#   - the CPU deck tuning: the cards the CPU can never play, and some generic ones, give way to themed cards it
+#     does play (apply_gods.py --text 3).
 # The .bps is the only thing to share. All four variants can live in the same work dir.
 #
 # Needs git, python3, and eds-decomp's native toolchain on PATH: run eds-decomp's tools/setup_native.sh once,

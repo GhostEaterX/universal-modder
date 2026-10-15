@@ -10,7 +10,8 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
   - cards/stats.csv                         the Gods become 4000/4000, level 10 (type stays Divine)
   - cards/passwords.csv                     their TCG passwords, so the password screen hands them out
   - tables/rodata2/card_copy_limits.json    ban list: 0 copies -> GOD_COPY_LIMIT
-  - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God
+  - tables/deck_lists.json                  Kaiba, Yami Yugi and Marik each swap one card for their God; with
+                                            --text 3, also the CPU deck tuning (DECK_TUNING_3T)
   - cards/descriptions.json                 with --text 2|3 (the effects builds): the Gods' effect text in
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
                                             the summon rules that patch_god_rules.py builds. Each text is a
@@ -27,6 +28,7 @@ import csv
 import io
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 OBELISK, SLIFER, RA = 1910, 1911, 1912
@@ -69,6 +71,165 @@ SECOND_DECK_PAGES = {
     5016: (5, "I better find some new cards and train more. Next time, I'll give you a real challenge."),
 }
 PAGE_BREAK = "$c$p"                 # wait for A, then a new page (the game's own code for it)
+
+# The three-Tribute effects build also tunes the CPU decks: every card the CPU can never play (no rule in its
+# code plays, sets off or chains it: Snatch Steal, Spellbinding Circle, Kunai with Chain, Solemn Judgment, Horn
+# of Heaven, Sebek's Blessing, Metalmorph, Time Machine, 7 Completed, and Megamorph outside Kaiba's Cyber-Stein
+# combo) and a few generic cards give way to cards that fit the duelist and that the CPU does play. Swaps are
+# one for one, so the deck region still fits. (deck table, duelist ID) -> [(card number, copies before,
+# copies after)]; the names are for reading only. A deck is changed only when it holds exactly the "before"
+# counts, and left alone when it already holds the "after" ones.
+O, A = "opponent_decks", "alternate_decks"
+DECK_TUNING_3T = {
+    (A, 1): [   # Yugi Muto, second deck
+        (1068, 1, 0),  # Snatch Steal
+        (1095, 0, 1),  # Call Of The Haunted
+    ],
+    (A, 2): [   # Tea Gardner, second deck
+        (348, 1, 0),   # Spellbinding Circle
+        (1092, 0, 1),  # Gift of The Mystical Elf
+    ],
+    (O, 3): [   # Joey Wheeler
+        (336, 1, 0),   # Raigeki
+        (15, 1, 2),    # Time Wizard
+    ],
+    (A, 3): [   # Joey Wheeler, second deck
+        (650, 1, 0),   # Kunai with Chain
+        (15, 0, 1),    # Time Wizard
+        (657, 1, 0),   # Metalmorph
+        (1204, 0, 1),  # Skull Dice
+    ],
+    (A, 4): [   # Tristan Taylor, second deck
+        (1068, 1, 0),  # Snatch Steal
+        (640, 0, 1),   # Invader of the Throne
+        (671, 1, 0),   # Harpie's Feather Duster
+        (223, 0, 1),   # Trap Master
+    ],
+    (O, 5): [   # Bakura Ryou
+        (348, 1, 0),   # Spellbinding Circle
+        (1095, 0, 1),  # Call Of The Haunted
+        (550, 3, 2),   # Dark Elf
+        (1123, 0, 1),  # Mystic Tomato
+    ],
+    (A, 5): [   # Bakura Ryou, second deck
+        (348, 1, 0),   # Spellbinding Circle
+        (1095, 0, 1),  # Call Of The Haunted
+        (550, 3, 2),   # Dark Elf
+        (1123, 0, 1),  # Mystic Tomato
+    ],
+    (O, 6): [   # Rex Raptor
+        (1068, 1, 0),  # Snatch Steal
+        (1001, 0, 2),  # Fissure
+        (336, 1, 0),   # Raigeki
+        (573, 2, 0),   # Witch of the Black Forest
+        (1108, 1, 3),  # Giant Rat
+    ],
+    (O, 7): [   # Espa Roba
+        (962, 2, 0),   # 7 Completed
+        (742, 0, 2),   # Barrel Dragon
+        (950, 1, 0),   # Time Machine
+        (414, 2, 3),   # Mechanicalchaser
+    ],
+    (O, 8): [   # Weevil Underwood
+        (1068, 1, 0),  # Snatch Steal
+        (1120, 0, 3),  # Flying Kamakiri #1
+        (531, 2, 0),   # Gemini Elf
+    ],
+    (O, 9): [   # Mako Tsunami
+        (650, 2, 0),   # Kunai with Chain
+        (1119, 0, 3),  # Mother Grizzly
+        (1068, 1, 0),  # Snatch Steal
+        (550, 1, 0),   # Dark Elf
+        (446, 0, 1),   # Giant Red Seasnake
+    ],
+    (O, 10): [   # Mai Valentine
+        (1068, 1, 0),  # Snatch Steal
+        (62, 0, 1),    # Harpie Lady Sisters
+        (573, 2, 0),   # Witch of the Black Forest
+        (1120, 0, 2),  # Flying Kamakiri #1
+    ],
+    (O, 11): [   # Rare Hunter
+        (1031, 1, 0),  # Horn of Heaven
+        (960, 1, 2),   # Negate Attack
+    ],
+    (O, 12): [   # Arkana
+        (1068, 1, 0),  # Snatch Steal
+        (759, 1, 2),   # Dark Magician Girl
+        (73, 3, 0),    # Giant Soldier of Stone
+        (1, 0, 3),     # Mystical Elf
+    ],
+    (O, 13): [   # Strings
+        (1068, 1, 0),  # Snatch Steal
+        (1095, 0, 1),  # Call Of The Haunted
+    ],
+    (O, 14): [   # Umbra & Lumis
+        (348, 1, 0),   # Spellbinding Circle
+        (101, 0, 2),   # Mask of Darkness
+        (1031, 1, 0),  # Horn of Heaven
+        (1068, 1, 0),  # Snatch Steal
+        (83, 0, 1),    # Reaper of the Cards
+        (531, 2, 0),   # Gemini Elf
+        (378, 0, 2),   # La Jinn the Mystical Genie of the Lamp
+    ],
+    (O, 15): [   # Marik Ishtar
+        (1068, 1, 0),  # Snatch Steal
+        (640, 0, 1),   # Invader of the Throne
+        (1179, 1, 0),  # Sebek's Blessing
+        (1095, 0, 1),  # Call Of The Haunted
+    ],
+    (O, 16): [   # Kaiba Seto
+        (1028, 1, 0),  # Solemn Judgment
+        (960, 0, 1),   # Negate Attack
+        (1068, 1, 0),  # Snatch Steal
+        (1160, 0, 1),  # Premature Burial
+        (1179, 2, 0),  # Sebek's Blessing
+        (740, 0, 1),   # Lord of D.
+        (30, 2, 3),    # Koumori Dragon
+    ],
+    (O, 17): [   # Ishizu Ishtar
+        (657, 2, 0),   # Metalmorph
+        (1140, 0, 2),  # Numinous Healer
+        (1028, 1, 0),  # Solemn Judgment
+        (960, 0, 2),   # Negate Attack
+        (1031, 1, 0),  # Horn of Heaven
+    ],
+    (O, 18): [   # Shadi
+        (1028, 1, 0),  # Solemn Judgment
+        (83, 2, 3),    # Reaper of the Cards
+    ],
+    (O, 19): [   # Yami Bakura
+        (650, 1, 0),   # Kunai with Chain
+        (83, 0, 1),    # Reaper of the Cards
+        (1061, 2, 1),  # Heavy Storm
+        (1123, 0, 1),  # Mystic Tomato
+        (837, 3, 0),   # Vorse Raider
+        (378, 0, 3),   # La Jinn the Mystical Genie of the Lamp
+    ],
+    (O, 20): [   # Yami Yugi
+        (1068, 1, 0),  # Snatch Steal
+        (1095, 0, 1),  # Call Of The Haunted
+    ],
+    (O, 21): [   # Duel Computer
+        (1068, 1, 0),  # Snatch Steal
+        (101, 2, 3),   # Mask of Darkness
+    ],
+    (O, 22): [   # Simon
+        (1068, 1, 0),  # Snatch Steal
+        (960, 0, 1),   # Negate Attack
+    ],
+    (O, 23): [   # Maximillion Pegasus
+        (950, 1, 0),   # Time Machine
+        (727, 0, 3),   # Toon Mermaid
+        (1028, 1, 0),  # Solemn Judgment
+        (656, 1, 0),   # Megamorph
+    ],
+    (O, 24): [   # Trusdale
+        (348, 1, 0),   # Spellbinding Circle
+        (960, 0, 1),   # Negate Attack
+        (1068, 1, 0),  # Snatch Steal
+        (1095, 0, 1),  # Call Of The Haunted
+    ],
+}
 DIALOGUE_TEXT = 0x300               # text bytes per dialogue record, NUL included
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
@@ -204,6 +365,25 @@ def main():
                 break
         else:
             sys.exit(f"deck {deck['_duelist']}: card {old} not found")
+    # CPU deck tuning (three-Tribute effects build only).
+    if args.text == 3:
+        names = json.loads((assets / "cards" / "names.json").read_text(encoding="utf-8"))
+        number_to_id = json.loads((assets / "cards" / "number_to_id.json").read_text(encoding="utf-8"))
+        for (table, index), rows in DECK_TUNING_3T.items():
+            deck = data[table][index]
+            have = Counter(n for n, _ in deck["cards"])
+            if all(have[n] == after for n, _, after in rows):
+                continue
+            if any(have[n] != before for n, before, _ in rows):
+                sys.exit(f"deck {deck['_duelist']}: not the cards the tuning expects (not the USA ROM?)")
+            cards = deck["cards"]
+            for n, before, after in rows:
+                for _ in range(before - after):
+                    cards.remove(next(c for c in cards if c[0] == n))
+                cards.extend([n, names[number_to_id[n]]] for _ in range(after - before))
+            cards.sort(key=lambda c: c[0])      # ascending, like the original lists
+            changes.append(f"deck {deck['_duelist']}{' (second deck)' if table == A else ''}: "
+                           f"{sum(max(0, b - a) for _, b, a in rows)} card(s) swapped")
     if not args.check:
         path.write_text(dump_json(data) + "\n", encoding="utf-8")
 

@@ -221,6 +221,18 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **On a real device:** the user tested the build with the second decks and the 10th-win lines in Delta on
   iOS: it works.
 
+### Also in the fourth build: the CPU deck tuning
+- **Dead cards:** 42 card slots across the CPU decks held cards the CPU can never play. A card is playable only
+  if some rule plays, sets off or chains it: the spell lists (`gAiGenericSpells`, `gAiEquipSpells`,
+  `gAiSimpleSpells`), `AiTryPlaySpellTrap`, `AiChainSetCard`, `AiShouldActivateSetCard`, the flip plans, or the
+  scripted combos. Snatch Steal (15 decks) appears only in the hand-reading lists; in the emulator the CPU
+  held it next to a target and set a monster instead.
+- **The swaps:** 63 cards in 26 decks, one for one (`DECK_TUNING_3T` in `apply_gods.py`, before/after counts
+  per deck). Each new card is one the CPU plays. Mai's deck now has the Harpie Lady Sisters that her scripted
+  Elegant Egotist play fetches; before, the combo could never finish.
+- **Checks:** the 21 tuned regular decks load card for card (fail on the old build). The recruiters, Elegant
+  Egotist, Toon World with Toon Mermaid and Fissure each work in a scripted CPU turn (pass on both builds).
+
 ## Gotchas
 1. **A naive modded build boots into a broken game.**
    - **Cause:** eds-decomp's layout is not relocatable. A lot of C reads tables through integer addresses
@@ -331,6 +343,12 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 27. **The ROM has data the game never uses.** The CPU deck loader takes a "second deck" flag that its only
     caller hard-codes to 0. The compiler can't see that across units, so the alternate table stays linked.
     Before assuming data is live, check the constant arguments at a function's only call site.
+28. **A card the CPU's code mentions isn't always a card it plays.** Many lists only rate cards (the "key
+    cards" for discards) or read your hand. Check for an actual play, chain or activation rule, then confirm
+    in the emulator. Snatch Steal is on those lists and never played (checked in the emulator), and so is
+    Sebek's Blessing (from the code).
+29. **A CPU trigger can wait for you.** When the CPU's recruiter is destroyed, its chain link shows "Chain:
+    Activating" and waits for A from the human player, so a scripted test needs A presses after the battle.
 
 ## Assets
 None generated. The God art, names and frames are the game's own and come from the user's ROM through the

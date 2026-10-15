@@ -5,7 +5,7 @@
     run_oracles.py <eds-decomp checkout> <gods-3t.gba> --tributes 3 [--control gods.gba]
     run_oracles.py <eds-decomp checkout> <gods-fx.gba> --effects [--control gods.gba]   # effects builds
     run_oracles.py <eds-decomp checkout> <gods-3t-fx.gba> --tributes 3 --effects --pack-viewer --god-rules \
-                   --second-decks [--control gods-3t.gba]
+                   --second-decks --deck-tuning [--control gods-3t.gba]
 
 Each check boots its own state library for the ROM (tools/emu.py states, from blank SRAM), applies the RAM
 setup in the .lua next to this file, drives the game with scripted keys and reads the result from RAM.
@@ -27,7 +27,11 @@ checks also run on a control ROM, where each check says what must happen there:
   - with --second-decks, the same control for the Tier 1 duelists' second decks (npc_deck.lua): a duelist
     beaten 10 times must play the second deck, which the control never loads, and the other decks must be
     the same as there. The expected decks come from the checkout's own deck_lists.json. Their 10th-win lines
-    (dialogue.lua) must be shown to their new last page, and the other result lines must be as there.
+    (dialogue.lua) must be shown to their new last page, and the other result lines must be as there;
+  - with --deck-tuning, the same control for the CPU deck tuning: each tuned deck must load card for card as
+    in the checkout's deck_lists.json (the control has the old decks), and the CPU must play the cards the
+    tuning brings in that it didn't hold before (recruiters, Elegant Egotist, Toon Mermaid, Fissure), which
+    it does on both.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -305,9 +309,9 @@ def second_decks_suite():
     return [check(f"second decks: {name} at 10 wins plays it", **deck("alternate_decks", opp, 10))
             for opp, name in TIER1] + [
         check("second decks: Tea at 9 wins keeps her deck", control="passes", **deck("opponent_decks", 2, 9)),
-        check("second decks: Rex at 10 wins keeps his deck", control="passes", **deck("opponent_decks", 6, 10)),
-        check("second decks: Kaiba at 10 wins keeps his deck", control="passes",
-              **deck("opponent_decks", 16, 10)),
+        # Rex's and Kaiba's decks are tuned too (--deck-tuning), so the control loads other cards: not compared.
+        check("second decks: Rex at 10 wins keeps his deck", control=None, **deck("opponent_decks", 6, 10)),
+        check("second decks: Kaiba at 10 wins keeps his deck", control=None, **deck("opponent_decks", 16, 10)),
     ] + [check(f"second decks: {name}'s 10th-win line, to its end", "dialogue.lua", "duel_turn2", 2700,
                DIALOGUE_KEYS, {"OPP": str(opp), "WINS": "9"}, dialogue_re(WIN10TH[opp], 10))
          for opp, name in TIER1] + [
@@ -315,6 +319,38 @@ def second_decks_suite():
               {"OPP": "2", "WINS": "10"}, dialogue_re(2014, 11), control="passes"),
         check("second decks: Rex's 10th-win line as before", "dialogue.lua", "duel_turn2", 2700, DIALOGUE_KEYS,
               {"OPP": "6", "WINS": "9"}, dialogue_re(WIN10TH[6], 10), control="passes"),
+    ]
+
+
+DUELISTS = {1: "Yugi", 2: "Tea", 3: "Joey", 4: "Tristan", 5: "Bakura", 6: "Rex", 7: "Espa Roba", 8: "Weevil",
+            9: "Mako", 10: "Mai", 11: "Rare Hunter", 12: "Arkana", 13: "Strings", 14: "Umbra & Lumis", 15: "Marik",
+            16: "Kaiba", 17: "Ishizu", 18: "Shadi", 19: "Yami Bakura", 20: "Yami Yugi", 21: "Duel Computer",
+            22: "Simon", 23: "Pegasus", 24: "Grandpa"}
+# duel_turn2: Blue-Eyes attacks the CPU's zone 0, then A through the chain of its trigger
+RECRUIT_KEYS = BATTLE_KEYS + "; 1300-1600/60 A"
+
+
+def deck_tuning_suite():
+    sys.path.insert(0, str(HERE.parent / "scripts"))
+    from apply_gods import DECK_TUNING_3T, O
+    tuned = sorted(i for table, i in DECK_TUNING_3T if table == O)
+    recruit = lambda name, card, target: check(
+        f"deck tuning: the CPU's {name} recruits", E, "duel_turn2", 1700, RECRUIT_KEYS,
+        {"P_ZONES": "0:82", "C_ZONES": f"0:{card}", "C_DECK": str(target)}, rf"C {target},0,0,0,0", control="passes")
+    return [check(f"deck tuning: {DUELISTS[i]}'s deck, card for card", "npc_deck.lua", "main_menu", 1500, NPC_KEYS,
+                  {"OPP": str(i)}, cpu_deck_re("opponent_decks", i)) for i in tuned] + [
+        recruit("Giant Rat", 272, 418),             # Little D
+        recruit("Mother Grizzly", 490, 545),        # Penguin Knight
+        recruit("Flying Kamakiri #1", 240, 316),    # Harpie Lady
+        recruit("Mystic Tomato", 505, 38),          # Armored Zombie
+        check("deck tuning: Elegant Egotist brings Harpie Lady Sisters", E, "duel_main1", 4000, END_TURN_KEYS,
+              {"C_ZONES": "0:316", "C_HAND": "199,1,1,1,1", "C_DECK": "317", "P_HAND": "1,1,1,1,1"}, r"C 316,317,",
+              control="passes"),
+        check("deck tuning: Toon World, then Toon Mermaid", E, "duel_main1", 4000, END_TURN_KEYS,
+              {"C_HAND": "733,731,1,1,1", "P_HAND": "1,1,1,1,1"}, r"C 731,[^\n]*LP \d+ 7000", control="passes"),
+        check("deck tuning: the CPU's Fissure destroys Blue-Eyes", E, "duel_main1", 4000, END_TURN_KEYS,
+              {"P_ZONES": "0:82", "C_HAND": "230,1,1,1,1", "P_HAND": "1,1,1,1,1"},
+              r"P 0,0,0,0,0 C [^\n]*grave 1 1", control="passes"),
     ]
 
 
@@ -430,6 +466,7 @@ def main():
     ap.add_argument("--pack-viewer", action="store_true", help="the ROM has the pack viewer (gods-3t-fx)")
     ap.add_argument("--god-rules", action="store_true", help="the ROM has the Gods' summon rules (gods-3t-fx)")
     ap.add_argument("--second-decks", action="store_true", help="the ROM has the second decks (gods-3t-fx)")
+    ap.add_argument("--deck-tuning", action="store_true", help="the ROM has the CPU deck tuning (gods-3t-fx)")
     ap.add_argument("-v", action="store_true", help="print the logs")
     args = ap.parse_args()
     checks = SUITE3 if args.tributes == 3 else SUITE2
@@ -446,6 +483,9 @@ def main():
     if args.second_decks:
         checks = checks + second_decks_suite()
         tag += "sd"
+    if args.deck_tuning:
+        checks = checks + deck_tuning_suite()
+        tag += "dt"
     mod = run_all(args.decomp.resolve(), args.rom.resolve(), tag, checks)
     ctl = run_all(args.decomp.resolve(), args.control.resolve(), f"control-{tag}", checks, control=True) \
         if args.control else None
