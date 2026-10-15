@@ -18,6 +18,20 @@ Search "<game> decomp" / "<game> recomp" / "<game> pc port" first. Modding a dec
 port's Lua API) and building with your own ROM as the asset source. Examples: Minecraft inside Mario 64 was
 built on sm64coopdx, and a new Majora's Mask area was built by Opus on the MM recomp.
 
+A fresh matching decomp is often not *relocatable* yet. Matching C tends to read tables through integer
+addresses, so the first edited function that grows shifts everything after it and silently breaks those
+reads. Check its notes ("shiftable", "relocatable") before editing C. If it isn't relocatable:
+- **Keep the original layout.** Change data in place through its asset pipeline.
+- **Hook the changed functions into free ROM space:**
+  1. find them by comparing the vanilla and edited objects;
+  2. link them against the original symbols;
+  3. route calls that leave the new code through long-branch stubs;
+  4. put a jump over each original entry.
+- **Prove the hooking first** with a null build: the original code relocated behind the same hooks must
+  play identically.
+
+`examples/yugioh-eds-egyptian-gods` (`scripts/hookbuild.py`) does this for a GBA decomp.
+
 ## Static recompilation (no source, still native)
 Recompilers translate machine code into C that links against a runtime reimplementing the console:
 - N64: N64Recomp + N64ModernRuntime (+ RT64 renderer);

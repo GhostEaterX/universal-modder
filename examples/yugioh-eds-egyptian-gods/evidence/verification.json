@@ -1,0 +1,1004 @@
+{
+  "date": "2026-10-13",
+  "rom_in": {
+    "title": "Yu-Gi-Oh! The Eternal Duelist Soul (USA)",
+    "game_code": "AY5E",
+    "sha1": "510fbba212aca9bab95ea12f8fd933e62ee34dea",
+    "size": 8388608
+  },
+  "rom_out": {
+    "sha1": "2b905f0111c72fd45fa0745e9c4c9c02b20645e7",
+    "size": 16777216,
+    "patch": "gods.bps",
+    "patch_bytes": 39158,
+    "patch_tool": "flips --create --bps-delta"
+  },
+  "eds_decomp_commit": "857002acd7a2e3ce98afb2992fe9761144308c9a",
+  "build": {
+    "edited_units": 43,
+    "changed_functions_hooked": 63,
+    "blob_base": "0x08800000",
+    "blob_bytes": 215224,
+    "long_branch_stubs": 536,
+    "monster_type_tests_rewritten": 85,
+    "obelisk_kind_cases": 12,
+    "reproducible": "scripts/build.sh from a fresh clone gives the same SHA-1"
+  },
+  "emulator": "mGBA 0.10.5 (libmgba, headless) via eds-decomp tools/emu.py, blank SRAM, HLE BIOS",
+  "oracles": [
+    {
+      "check": "Kaiba's duel deck holds Obelisk",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "Yami Yugi's duel deck holds Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "Marik's duel deck holds Ra",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "password 10000020 gives Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "player Tribute Summons Slifer",
+      "mod": "pass",
+      "original": "fails (only Card View offered)"
+    },
+    {
+      "check": "CPU Tribute Summons Obelisk",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "CPU Tribute Summons Slifer",
+      "mod": "pass",
+      "original": "fails"
+    },
+    {
+      "check": "CPU Tribute Summons Ra",
+      "mod": "pass",
+      "original": "fails"
+    }
+  ],
+  "extra_checks": [
+    "password -> Trunk -> Deck Edit 'To Main Deck' -> Campaign duel: the player's 41-card duel deck holds Slifer (ID 818)",
+    "CPU's Obelisk attacks the player's Blue-Eyes White Dragon: BEWD destroyed, player LP 8000 -> 7000",
+    "null hooks (original code relocated, same 63 hooks): EWRAM identical to the original layout at main_menu, duel_start, duel_main1, duel_turn2 except gDuelScreen.fieldBgScroll (VBlank drift counter, 2-3 frames of lag during the deal)",
+    "mod vs null hooks, no Gods involved: EWRAM identical and identical frame counts at every library state"
+  ],
+  "real_device": {
+    "emulator": "Delta (iOS)",
+    "by": "the user",
+    "date": "2026-10-13",
+    "result": "summoned a God with two Tributes from the field; 4000 ATK / 4000 DEF; attacked with it"
+  },
+  "three_tributes_build": {
+    "rom_sha1": "1cb038eda3c657e4f06547adce7f775ce38b9cfa",
+    "patch": "gods-3t.bps",
+    "patch_bytes": 45617,
+    "build": {
+      "command": "scripts/build.sh <rom> <work> --tributes 3",
+      "edited_units": 45,
+      "hooks": 73,
+      "stubs": 555,
+      "blob_bytes": 226390,
+      "new_globals": [
+        "AiPickTributeMonsterExcept",
+        "QueueNormalSummonChoosePositionEx",
+        "gStrSelectThirdTribute",
+        "gStrThreeTributesPrompt"
+      ]
+    },
+    "oracles": "tests/run_oracles.py --tributes 3 --control gods.gba: 15/15 pass; every check that tells the rules apart fails on the 2-Tribute build, the shared ones pass on both",
+    "extra_checks": [
+      "God-free duel: EWRAM and frame counts identical to the 2-Tribute build at main_menu, duel_start, duel_main1, duel_turn2"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-13",
+      "result": "works"
+    }
+  },
+  "effects_builds": {
+    "decisions": "Obelisk: Tribute 2, destroy all opponent monsters, can't attack that turn; Slifer: ATK/DEF = 1000 x hand, opposing Attack Position summons lose 2000 ATK (destroyed at 0); Ra: on Normal Summon pay LP down to 100, ATK/DEF become the amount paid, and pay 1000 LP to destroy 1 monster; traits: a God's Normal Summon can't be answered, Obelisk can't be targeted, a God can't be Normal Set",
+    "builds": [
+      {
+        "patch": "gods-fx.bps",
+        "command": "scripts/build.sh <rom> <work> --effects",
+        "rom_sha1": "7e74a01ce70057d515dadd267ad7fdba93b89d99",
+        "patch_bytes": 44826,
+        "edited_units": 46,
+        "new_units": [
+          "god_effects",
+          "god_effects_table"
+        ],
+        "hooks": 78,
+        "stubs": 556,
+        "blob_bytes": 241288,
+        "control": "gods.gba",
+        "base_suite": "8/8 pass"
+      },
+      {
+        "patch": "gods-3t-fx.bps",
+        "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+        "rom_sha1": "471f4347758993363e2bbaac30167f1635575c43",
+        "patch_bytes": 50664,
+        "edited_units": 47,
+        "new_units": [
+          "god_effects",
+          "god_effects_table"
+        ],
+        "hooks": 86,
+        "stubs": 568,
+        "blob_bytes": 248196,
+        "control": "gods-3t.gba",
+        "base_suite": "15/15 pass"
+      }
+    ],
+    "effect_table": "gCardEffectsMod: 428 rows (426 original + Obelisk 1910 + Ra 1912) in the relocated code; check_effect_table.py: the 426 rows byte-identical to gCardEffects at 0x0819A9D4, sorted, Thumb pointers, all 11 readers of the old table hooked",
+    "oracles": [
+      {
+        "check": "Obelisk: Tribute 2, destroy the CPU's monsters",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Obelisk: no Activate with 1 other monster",
+        "effects_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "CPU: Obelisk clears the player's monsters",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: 3 cards in hand = 3000, beats 2500",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: 2 cards in hand = 2000, loses",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: an 1800 ATK summon is destroyed",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Slifer: a 2500 ATK summon loses 2000",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Ra: pay LP on Normal Summon, ATK 7900",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Ra: pay 1000 LP, destroy a monster",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: Ra pays LP, attacks with 7900",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: Ra destroys the player's monster",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "CPU: no Slifer with a 3-card hand",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: no Trap Hole on a God's Normal Summon",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: Obelisk can't be targeted",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "trait: a God can't be Set",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "card text in the ROM",
+        "effects_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "regression: Trap Hole still hits Summoned Skull",
+        "effects_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "regression: Tribute to The Doomed still works",
+        "effects_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "oracle_command": "tests/run_oracles.py <decomp> gods-fx.gba --effects --control gods.gba; tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --control gods-3t.gba: ALL OK for both",
+    "extra_checks": [
+      "God-free library states (title, main_menu, deck_edit, duel_start, duel_main1, duel_turn2): EWRAM and frame counts identical with and without effects for both pairs; IWRAM differs only in the stack and the audio DMA buffer",
+      "fresh work dir: all four variants built from scratch; gods.gba and gods-3t.gba reproduce 2b905f01... and 1cb038ed...; gods-fx.gba rebuilt to the same SHA-1",
+      "showcase: a 34 s silent clip from the harness (Obelisk's wipe, Ra's payment, Slifer's drain), sent to the user rather than committed"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-13",
+      "patch": "gods-3t-fx.bps",
+      "result": "works: the user summoned Ra"
+    }
+  },
+  "pack_viewer": {
+    "decisions": "SELECT on the pick-a-pack screen opens the centre pack's list; the pack-opening scene's rows, 5 per screen; live odds for the next pick (normal, same pack again, pity); full pack names; a NEW mark on cards not owned; only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "000ae97d786f1d922dd31a8d74f38a5e1ab9ae36",
+      "patch_bytes": 62033,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer"
+      ],
+      "edited_units": 50,
+      "hooks": 91,
+      "stubs": 606,
+      "blob_bytes": 279478,
+      "same_bytes_as_previous_gods_3t_fx_below_0x08800000": true,
+      "reproducible": "fresh work dir; gods-3t rebuilt in the same run matches its published SHA-1"
+    },
+    "odds_model": {
+      "generator": "scripts/gen_pack_odds.py (from the tree's booster_packs.json at build time; not committed)",
+      "selftest": "Markov chains vs brute force over all permutations, N = 5 and 6 with uneven RNG weights: max error 7.8e-16",
+      "simulation": "GeneratePackCards with the game's Random() (numpy, 400,000 packs per pack and roll): 2,982 card odds (23 packs x 3 rolls), max |sim - model| 0.256 points, max |z| 3.48"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --control gods-3t.gba",
+    "suite_result": "ALL OK: 18 effect checks, 15 base checks, 13 viewer checks",
+    "oracles": [
+      {
+        "check": "viewer: the band names the centre pack",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: SELECT opens the centre pack",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: header and odds, normal roll",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: every card in order, with its odds",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack again, rares 2/3",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: pity roll, a rare for sure",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack, pity needs 11",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: same pack, pity at 11",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: NEW on a card you don't own",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: no NEW once you own it",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: Card Detail, RIGHT, back to the list",
+        "viewer_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "viewer: back with the same pack, which A picks",
+        "viewer_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "regression: a pick without SELECT",
+        "viewer_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: the band on the pick screen, the list header, rows with odds and NEW, a scroll, a page, Card Detail with LEFT/RIGHT, back to the pick screen with the same pack, the pick still opening a pack",
+      "no mixed frames in per-frame screenshots of scrolls (rows move in the VBlank callback; a redrawn row is blank until drawn)",
+      "with gMain.rngState pinned at the pick, the viewer build and the build without it generate the same 5 cards, with or without a trip through the viewer"
+    ],
+    "not_verified": [
+      "on a real device (Delta)",
+      "packs other than Vol.1-3 in the emulator (the save in the harness unlocks only those; the other 20 lists come from the same table and code)"
+    ]
+  },
+  "round3_rules_and_quality_of_life": {
+    "decisions": "the Gods' TCG summon rules (Special Summoned Obelisk/Slifer to the Graveyard in the End Phase; Ra can't be Special Summoned); owned counts in the pack list; Found in on Card Detail outside duels; the Gods in Deck Edit's sorts and filters and their stats in the pack rows (the game's 4000 / X000 / ???? print stays: it matches the effects); only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "27007baa47952ebfe051c3f1eaa399eef011ef99",
+      "patch_bytes": 66260,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer",
+        "god_rules"
+      ],
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt from fresh work dirs match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --control gods-3t.gba",
+    "suite_result": "62/62: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit checks; every control comparison as expected. One viewer check first failed on its own regex (it expected the Card Detail log lines in the other order); fixed and re-run on the same ROM: pass, control fails.",
+    "viewer_checks_added": [
+      "viewer: owned count = the rows without NEW (fails on the control)",
+      "viewer: x1 instead of NEW once you own it (fails on the control)",
+      "viewer: a God's row shows its stats, 4000/4000 for Obelisk in The Final Duelist (fails on the control)",
+      "viewer: Card Detail says where else to find it (fails on the control)"
+    ],
+    "oracles": [
+      {
+        "check": "rules: Monster Reborn still revives Blue-Eyes",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: Monster Reborn can't revive Ra",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: the CPU's Monster Reborn skips Ra",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Obelisk leaves in the End Phase",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Slifer leaves in the End Phase",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: a revived Blue-Eyes stays",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: a God summoned normally stays",
+        "rules_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "rules: the card text says so",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "rules: the card text says so (End Phase)",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: ATK sort puts the Gods first",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: Effect Monsters lists Obelisk",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Card Detail: Found in, from Deck Edit",
+        "rules_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Card Detail: no Found in inside a duel",
+        "rules_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: 8/40 owned on the pick band; x1/x3 marks; Obelisk's row in The Final Duelist; Obelisk's Card Detail with the new text and Found in; Deck Edit sorted by ATK with the Gods first; Found in for 7 Colored Fish in Deck Edit; a revived Obelisk zoomed and sent away in the End Phase"
+    ],
+    "not_verified": [
+      "the End Phase rule and the quality-of-life changes on a real device (Delta)",
+      "Time Machine on Ra (code-reviewed only: Time Machine is the one revival without CanReviveGraveyardCard)",
+      "Call of the Haunted, Premature Burial, The Shallow Grave and Spear Cretin on Ra (they use the same CanReviveGraveyardCard list as Monster Reborn, which is tested)"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps",
+      "result": "Ra can't be revived"
+    }
+  },
+  "second_decks": {
+    "decisions": "the Tier 1 duelists (Yugi, Tea, Joey, Tristan, Bakura) play their second deck (gOpponentAltDecks, never loaded by the original game) once the player's record against them reaches 10 wins; only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d",
+      "patch_bytes": 67259,
+      "new_units": [
+        "god_effects",
+        "god_effects_table",
+        "pack_viewer",
+        "god_rules",
+        "second_decks"
+      ],
+      "reproduced": "the same SHA-1 from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt from a fresh work dir match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --control gods-3t.gba",
+    "suite_result": "70/70: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck checks; every control comparison as expected",
+    "oracles": [
+      {
+        "check": "second decks: Yugi / Tea / Joey / Tristan / Bakura at 10 wins: the CPU's deck and Fusion Deck are the second deck from deck_lists.json, card for card",
+        "second_decks_build": "pass (5 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "second decks: Tea at 9 wins keeps her deck",
+        "second_decks_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Rex at 10 wins (no second deck) keeps his deck",
+        "second_decks_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Kaiba at 10 wins keeps his deck, with Obelisk",
+        "second_decks_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "code: OpponentUsesSecondDeck compiles to (opponent - 1) <= 4 and (duelRecords[opponent].wins & 0x7FF) > 9; Campaign_SetupDuel passes its result to LoadOpponentDeck",
+      "smoke: Joey at 10 wins through a whole duel against a player who only ends turns; the CPU summoned Tiger Axe, Sinister Serpent and Dragon Zombie from the second deck and won"
+    ],
+    "not_verified": [
+      "reaching 10 wins by playing (the tests set the record in RAM)"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (8710dd2f...)",
+      "result": "works (tested with the 10th-win lines build)"
+    }
+  },
+  "tenth_win_lines": {
+    "decisions": "after the player's 10th win against Yugi, Tea, Joey, Tristan or Bakura (the win that switches them to their second deck), their 10th-win line (gOpponentResultTexts[].win10th) gets a new last page built around the user's sentence \"I better find some new cards and train more\"; data only (apply_gods.py --text 3); only in gods-3t-fx",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "8710dd2f4335187d5254c7a44ede052e11af77a1",
+      "patch_bytes": 67426,
+      "reproduced": "the same SHA-1 from two fresh work dirs",
+      "rom_diff": "against the second-deck build (637b7bd6...): 468 bytes, all inside dialogue records 1017, 2017, 3017, 4017 and 5016"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --control gods-3t.gba",
+    "suite_result": "77/77: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck and 7 dialogue checks; every control comparison as expected",
+    "oracles": [
+      {
+        "check": "Yugi / Tea / Joey / Tristan / Bakura at 9 wins, then a win: the 10th-win line is printed to the end of its new page (the printer reaches the record's NUL), then the record is 10",
+        "lines_build": "pass (5 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Tea's 11th win: her usual win line (2014)",
+        "lines_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Rex's 10th-win line (6016), unchanged",
+        "lines_build": "pass",
+        "control": "passes"
+      }
+    ],
+    "extra_checks": [
+      "screenshots of the five new pages: each fits the dialogue box (Joey's and Tristan's use all four lines)"
+    ],
+    "not_verified": [
+      "reaching the 10th win by playing (the tests set the record to 9 in RAM)"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (8710dd2f...)",
+      "result": "works"
+    }
+  },
+  "deck_tuning": {
+    "decisions": "the user approved a per-duelist change list: 63 cards in 26 of the 29 CPU decks, one for one; the 42 copies the CPU can never play (Snatch Steal x15, Spellbinding Circle x5, Kunai with Chain x4, Solemn Judgment x4, Horn of Heaven x3, Sebek's Blessing x3, Metalmorph x3, Time Machine x2, 7 Completed x2, Megamorph x1 outside the Cyber-Stein combo) and some generic cards give way to themed cards the CPU plays; only in gods-3t-fx (apply_gods.py --text 3, DECK_TUNING_3T)",
+    "dead_card_method": "a Magic/Trap card is playable only if a rule plays, chains or activates it: gAiGenericSpells, gAiEquipSpells, gAiSimpleSpells, AiTryPlaySpellTrap, AiChainSetCard, AiSelectUsableSpellTrap, AiShouldActivateSetCard; Snatch Steal confirmed in the emulator (CPU with Snatch Steal and a Summoned Skull in hand against a Blue-Eyes sets a monster; Change of Heart in the same setup takes the Blue-Eyes and attacks); Upstart Goblin confirmed played",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88",
+      "patch_bytes": 67742,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt after the apply_gods.py change match their published SHA-1s"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --control gods-3t.gba",
+    "suite_result": "105/105: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck, 7 dialogue and 28 deck-tuning checks (21 decks card for card, 7 CPU plays); every control comparison as expected (17 not compared: the 15 base checks, and Rex's and Kaiba's second-deck checks, whose decks differ on the control)",
+    "oracles": [
+      {
+        "check": "the 21 tuned regular decks load card for card (npc_deck.lua against the checkout's deck_lists.json); the five second decks through the second-deck checks",
+        "tuned_build": "pass (21 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Giant Rat, Mother Grizzly, Flying Kamakiri #1 and Mystic Tomato, destroyed in battle, summon Little D, Penguin Knight, Harpie Lady and Armored Zombie from the CPU's deck",
+        "tuned_build": "pass (4 checks)",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Elegant Egotist with a Harpie Lady out and brings Harpie Lady Sisters from its deck",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Toon World (1000 LP) and summons Toon Mermaid",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Fissure destroys the player's face-up Blue-Eyes",
+        "tuned_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "second decks: Rex and Kaiba at 10 wins keep their (now tuned) decks",
+        "tuned_build": "pass",
+        "control": "not compared (the control has the old decks)"
+      }
+    ],
+    "not_verified": [
+      "the CPU playing the other swapped-in cards in a duel (Time Wizard, Barrel Dragon, Call Of The Haunted, Negate Attack, Invader of the Throne, Trap Master, Mask of Darkness, Reaper of the Cards, Premature Burial, Numinous Healer, Gift of The Mystical Elf, Skull Dice): each has a rule in its code, but only the cards above were played in scripted turns"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (2082fb6f...)",
+      "result": "works"
+    }
+  },
+  "extra_deck_rituals": {
+    "decisions": "the user approved the plan: Ritual monsters live in the Fusion Deck (EDS's Extra Deck) like Fusion monsters; the Ritual Magic cards summon them from there (Tributes and the level rule unchanged, the hand path kept); Senju of the Thousand Hands searches a Ritual Magic card instead; Cyber-Stein keeps to Fusion monsters; old saves are moved; only in gods-3t-fx (patch_extra_deck_rituals.py, src/extra_deck_rituals.c)",
+    "design": {
+      "predicate": "IsExtraDeckMonster: a monster type (CARD_TYPE_IS_MONSTER) that is not Divine, with stats kind Fusion or Ritual",
+      "edits": "16 anchored edits in 12 files: DeckEdit_IsFusionMonster, DeckEdit_BeginCardMove and DeckEdit_UpdateCardMove (copy counts), DeckEdit_Update (Side Deck refusal), AddCardNumberToDeckTop, IsFusionMonster, AddCardToHand, DuelCmd_ReturnGraveyardCardToHand, HandHasRitualMonster, EffectRitualSummonResolve, EffectCyberSteinPrepare, EffectCyberSteinResolve, CollectEffectTargets (Cyber-Stein, Senju), EffectAddRitualCardToHandResolve, GameInit",
+      "save_migration": "GameInit, right after ReadSram: with a valid checksum, the saved Deck's Ritual monsters move to the saved Fusion Deck (the trunk when it is full or at the copy limit), then UpdateSaveChecksum",
+      "card_text": "Senju of the Thousand Hands (apply_gods.py --text 3, SENJU_TEXT_3T)"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "9372e6d50a857a1131e0c72785f5ae16bf53a486",
+      "patch_bytes": 74253,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "hooks": "106 changed functions (96 before), 6 new units"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --control gods-3t.gba",
+    "suite_result": "124/124: 18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second-deck, 7 dialogue, 28 deck-tuning and 19 Extra Deck checks; every control comparison as expected (17 not compared: the 15 base checks, and Rex's and Kaiba's second-deck checks); the second-deck and tuning checks expect the rituals in the CPU's Fusion Deck",
+    "oracles": [
+      {
+        "check": "Bakura's Dokurorider, Mako's Fortress Whale and Pegasus's two Relinquished load into the CPU's Fusion Deck (and the tuned and second decks card for card, with rituals in the Fusion Deck)",
+        "extra_deck_build": "pass (3 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: To Main Deck files Black Luster Soldier in the saved Fusion Deck (deck 40, fusion 1); To Trunk takes it back out",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: Black Luster Soldier can't go to the Side Deck",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Deck Edit: a Normal monster still goes to the Side Deck; Obelisk to the Main Deck",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "passes"
+      },
+      {
+        "check": "save_migration.lua: a save with Black Luster Soldier, Magician of Black Chaos and Relinquished in its Deck, written to SRAM, boots with them in its Fusion Deck and a valid checksum",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "the same with a full Fusion Deck: the ritual goes to the trunk",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "a save without rituals boots unchanged, with a valid checksum",
+        "extra_deck_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Black Illusion Ritual summons Relinquished from the Fusion Deck, tributing the monster in zone 0",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Black Illusion Ritual with Relinquished in the hand",
+        "extra_deck_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Black Illusion Ritual summons Relinquished from its Fusion Deck (a hand of Level 8s, so it doesn't summon to attack first)",
+        "extra_deck_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Black Luster Soldier, bounced by the CPU's Hane-Hane, goes back to the Fusion Deck",
+        "extra_deck_build": "pass",
+        "control": "fails (to the hand)"
+      },
+      {
+        "check": "Senju of the Thousand Hands adds a Ritual Magic card from the deck; its new text is in the ROM",
+        "extra_deck_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Cyber-Stein with only Black Luster Soldier in the Fusion Deck can't be activated",
+        "extra_deck_build": "pass",
+        "control": "fails (pays 5000 LP and summons it)"
+      },
+      {
+        "check": "Cyber-Stein with Black Luster Soldier and Blue-Eyes Ultimate Dragon summons Blue-Eyes Ultimate Dragon",
+        "extra_deck_build": "pass",
+        "control": "fails (summons Black Luster Soldier)"
+      }
+    ],
+    "extra_checks": [
+      "screenshots: the ritual summon from the Fusion Deck, the bounce back to it, Senju's Ritual Magic prompt and list, Cyber-Stein's list on the old build, Deck Edit's statement (Main Deck 40, Fusion Deck 1)",
+      "on the build without the feature, To Trunk does nothing for a ritual in the saved Fusion Deck (the limit the README warns about)",
+      "the CPU doesn't play a Ritual Magic card on a turn it Normal Summons to attack, on either build: a gAiState trace shows the Normal Summon ends Main Phase 1, and Main Phase 2 plays no spells",
+      "npc_deck.lua race found and fixed: the CPU's shuffle spans frames, and the first full run read Kaiba's deck mid-swap; it now logs once two frames hold the same cards"
+    ],
+    "not_verified": [
+      "Gale Dogra sending a ritual to the Graveyard (it lists every Fusion Deck card, unchanged code)",
+      "a Link Battle",
+      "every ritual recipe: Black Illusion Ritual was played for the player and the CPU; the others share the same code and table"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (9372e6d5...)",
+      "result": "works"
+    }
+  },
+  "kaiba_polymerization": {
+    "decisions": "the user asked for a Polymerization in Kaiba's deck so his two Blue-Eyes Ultimate Dragons can come out; his second Sebek's Blessing (dead for the CPU) becomes Polymerization instead of a third Koumori Dragon (DECK_TUNING_3T, still 63 cards in 26 decks, one for one)",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "27e5fdeeb39f652fc4c15f2103f57695e467a827",
+      "patch_bytes": 74253,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "diff_from_previous": "18 bytes, all in the CPU deck table (0x0819D99C-0x0819D9CA), against 9372e6d5..."
+    },
+    "suite_result": "125/125 against gods-3t: the 124 checks before plus 'Polymerization brings Blue-Eyes Ultimate Dragon'; every control comparison as expected (17 not compared)",
+    "oracles": [
+      {
+        "check": "Kaiba's tuned deck loads card for card, with Polymerization and two Koumori Dragons",
+        "build": "pass",
+        "control": "fails (the old deck)"
+      },
+      {
+        "check": "the CPU with Polymerization and three Blue-Eyes White Dragons in hand, Blue-Eyes Ultimate Dragon in its Fusion Deck, plays Polymerization and summons it (and attacks for 4500)",
+        "build": "pass",
+        "control": "passes"
+      }
+    ],
+    "not_verified": [
+      "Kaiba drawing into three Blue-Eyes in a played duel (rare with three in 40 cards)"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (27e5fdee...)",
+      "result": "works"
+    }
+  },
+  "boss_effects": {
+    "decisions": "the user approved the effects: Summoned Skull pierces; Millennium Golem can't be destroyed by battle (the damage stays); Dark Magician destroys 1 Spell/Trap card the opponent controls once per turn; Red-Eyes B. Dragon tosses a coin once per turn and on heads destroys 1 monster the opponent controls; Red-Eyes Black Metal Dragon gets a weaker Metalmorph (+1/4 of the attacked monster's ATK, damage calculation only); the Duel Computer trades 2 of its 3 White Magical Hats for 2 Barrel Dragons. Design rules: none of them protected from removal, the effects keep paying on the field, the CPU uses them. Only in gods-3t-fx (patch_boss_effects.py, src/boss_effects.c)",
+    "design": {
+      "passive": "CalcBattle: BossPierces sets piercing, BossBattleIndestructible clears destroyed on either side, BossAttackBonus adds (ATK + 3) / 4 of the defender to the attacker's battle value after Metalmorph's",
+      "activated": "three rows appended to gCardEffectsMod after the Gods' (34, 2034, 81), shaped like Barrel Dragon's: once-per-turn prepare, an opponent check, a pick (Dust Tornado's prompt for the human, a set card first for the CPU; Barrel Dragon's prompt and pick for Red-Eyes); FindCardEffect falls back to BossFindCardEffect; the turn start resets effectUnused; the CPU activates them after the Gods",
+      "red_eyes_fork": "with a Metalmorph equipped, Activate stays the original upgrade to Red-Eyes Black Metal Dragon; without, the menu asks the effect row and the dispatch adds the chain link (step 0 only)",
+      "data": "apply_gods.py --text 3, BOSSES_3T: Summoned Skull, Millennium Golem, both Dark Magicians and Red-Eyes B. Dragon from kind Normal to Effect (spell speed for the monster effect, orange frame); new text for all six; the Duel Computer's swap in DECK_TUNING_3T (65 cards in 26 decks)",
+      "table_check": "check_effect_table.py --boss-rows: 431 rows, the 428 sorted ones unchanged, the boss rows' handlers Thumb addresses and their numbers absent from the sorted part"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "command": "scripts/build.sh <rom> <work> --tributes 3 --effects",
+      "rom_sha1": "79361de1f81f7b94358b914559f172fe515ceed5",
+      "patch_bytes": 77643,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "hooks": "108 changed functions (106 before), 7 new units"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --boss-effects --control gods-3t.gba",
+    "suite_result": "146/146 against gods-3t: the 125 checks before plus 21 boss checks (16 played, 5 card texts); the rules suite's Effect Monsters filter now expects the Trunk's Dark Magician too (n=4), and still n=3 on 27e5fdee; every control comparison as expected (17 not compared). The first full run was 145/146: that filter check, before its expectation was updated",
+    "oracles": [
+      {
+        "check": "Summoned Skull attacks a 7 Colored Fish in Defense Position: 1700 damage (CPU LP 6300); the same for the CPU's Skull",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Millennium Golem attacked by Blue-Eyes survives, its controller takes 1000; the player's and the CPU's",
+        "boss_build": "pass (2 checks)",
+        "control": "fails (destroyed)"
+      },
+      {
+        "check": "Raigeki destroys Millennium Golem",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Dark Magician destroys one of the CPU's set cards",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Dark Magician once per turn: back on its menu after the first use, the same keys open Card View, and only one card is destroyed",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "the CPU's Dark Magician, marked used at the end of the player's turn, is ready on the CPU's turn, destroys the player's set Trap Hole and attacks for 2500",
+        "boss_build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Red-Eyes: heads (RNG 1234ABCD) destroys the CPU's Blue-Eyes; tails (00000002) leaves it",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "the CPU's Red-Eyes: heads destroys the player's Blue-Eyes and attacks for 2400; tails (00000001), no attack",
+        "boss_build": "pass (2 checks)",
+        "control": "fails"
+      },
+      {
+        "check": "Red-Eyes with Metalmorph equipped: Activate Tributes it for Red-Eyes Black Metal Dragon from the Deck, no coin",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "Red-Eyes Black Metal Dragon attacks Blue-Eyes: 2800 + 750 wins, 550 damage",
+        "boss_build": "pass",
+        "control": "fails (it loses)"
+      },
+      {
+        "check": "the CPU's Blue-Eyes attacks Red-Eyes Black Metal Dragon: no bonus, 200 damage",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU plays Polymerization for B. Skull Dragon",
+        "boss_build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the five new card texts are in the ROM",
+        "boss_build": "pass (5 checks)",
+        "control": "fails"
+      }
+    ],
+    "extra_checks": [
+      "the Metalmorph regression found a bug in the first build (97a6e743...): the upgrade's second dispatch step saw an empty zone without a Metalmorph and tossed the coin too, and Red-Eyes Black Metal Dragon never came; fixed by taking the coin path at step 0 only",
+      "screenshots: Dark Magician's prompt, pick, chain and the destroyed Trap Hole; the coin scene for the player and the CPU; Barrel Dragon's prompt for Red-Eyes; a used Dark Magician's two-command menu; Card View of Summoned Skull, old build vs new (yellow Normal frame and [Fiend] vs orange frame, [Fiend/Effect] and the new text)",
+      "the effects.lua coin log reads gDuelScene (0x02017A30): scene 0, arg bits 8-14 the coin count, bit i coin i",
+      "played once outside the suite: Dark Magician's alternate art (ID 151, card 2034) destroys one of the CPU's set cards with the same keys"
+    ],
+    "not_verified": [
+      "a full played duel against a boss deck",
+      "the Duel Computer's Barrel Dragons in a duel (its deck loads card for card in the tuning suite; Barrel Dragon's CPU rule is the original game's)",
+      "a Link Battle"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (79361de1...)",
+      "result": "works"
+    }
+  },
+  "cpu_metalmorph": {
+    "decisions": "the user asked to give Joey's second deck its Metalmorph back so the CPU upgrades Red-Eyes: DECK_TUNING_3T no longer trades it for Skull Dice (64 cards in 26 decks, 41 dead), and the CPU now plays it (patch_boss_effects.py, src/boss_effects.c)",
+    "design": {
+      "original_ai": "AiStepSetSpellTraps sets any Trap from the hand, so Metalmorph got set; nothing activated it, and the upgrade is a monster-menu command only the human gets",
+      "activation": "BossAiActivateEffects, with Red-Eyes Black Metal Dragon in the CPU's deck: upgrade a Red-Eyes that has Metalmorph, else flip a set, activatable Metalmorph onto a face-up Red-Eyes (point, flip, Chain_AddPending as AiTryPlaySpellTrap does); Dark Magician's and Red-Eyes' own effects come after",
+      "target": "EffectEquipTargetChainB, the CPU's Metalmorph: its face-up Red-Eyes without a Metalmorph (BossMetalmorphTarget), else the original pick (its strongest monster)",
+      "upgrade": "both of the menu's steps in one call (TributeMonster, then TakeDeckCardByNumber and QueueSpecialSummonChoosePosition): hookbuild.py allows no new RAM to remember a pending step; needs another free monster zone",
+      "step_3": "AiStepChangePositions calls AiActivateMonsterEffects once; it now stays while a Metalmorph it activated resolves, and its next pass makes the upgrade"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "eabd901ffabcc1f0ae52cf68cca9e3890afd63ad",
+      "patch_bytes": 78463,
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "2cb6ffd6... equipped Metalmorph and never upgraded (the one monster effect after Main Phase 1)"
+    },
+    "suite_result": "151/151 against gods-3t: the 146 checks before plus 5 (the CPU's Metalmorph upgrade, its pick of Red-Eyes, the two turns from its hand, Metalmorph left set without Black Metal Dragon, Dark Magician on a summon turn); every control comparison as expected (17 not compared)",
+    "oracles": [
+      {
+        "check": "the CPU's set Metalmorph goes onto its Red-Eyes, which it Tributes for Red-Eyes Black Metal Dragon from its deck, then attacks for 2800",
+        "build": "pass",
+        "control": "fails (Metalmorph stays set)"
+      },
+      {
+        "check": "with its Blue-Eyes White Dragon on the field too, Metalmorph still goes onto Red-Eyes",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "from its hand over two turns: Red-Eyes attacks and Metalmorph is set; the human draws and ends the turn; the CPU upgrades and attacks for 2800",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "without Red-Eyes Black Metal Dragon in its deck, the CPU leaves Metalmorph set",
+        "build": "pass",
+        "control": "passes"
+      },
+      {
+        "check": "the CPU's Dark Magician destroys the human's set card on a turn it Normal Summons to attack",
+        "build": "pass",
+        "control": "fails"
+      },
+      {
+        "check": "Joey's second deck loads card for card with its Metalmorph (second-deck suite)",
+        "build": "pass",
+        "control": "fails (the control never loads second decks)"
+      }
+    ],
+    "corrections": [
+      "the boss-effects docs said the CPU uses its monster effects only on turns it doesn't Normal Summon to attack; that holds for its spells, but AiStepChangePositions gives it one monster effect after Main Phase 1 every turn (now checked)"
+    ],
+    "not_verified": [
+      "a full duel against Joey's second deck that reaches the upgrade by drawing"
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (eabd901f...)",
+      "result": "works"
+    }
+  },
+  "extra_deck_effects": {
+    "decisions": "the user asked to apply the bosses' five rules to the Fusion and Ritual monsters, approved the 19 proposed effects for the Level 7+ ones and Dokurorider, and kept the three large ones (Gaia, Super War-Lion, Skull Guardian); giving CPU decks some of these cards is still open. Only in gods-3t-fx (patch_extra_deck_effects.py, src/extra_deck_effects.c)",
+    "design": {
+      "bar": "3000 ATK for three cards (a Blue-Eyes with two Tributes), +300 for a Ritual monster, +500 for a Fusion of two 2000+ ATK materials; the gap sets the effect's size, capped by the tier of a CPU duelist who plays the card",
+      "passive": "CalcBattle: ExtraDeckPierces (B. Skull Dragon, Black Luster Soldier, Javelin Beetle), ExtraDeckBattleIndestructible (Labyrinth Tank, Crab Turtle, Fortress Whale), Kaiser Dragon's +1000 against DARK for either side, Garma Sword destroys a LIGHT monster it battles; GetZoneCardStats: Twin-Headed Thunder Dragon in key 1516's case, Skull Knight / Zera The Mant / Dokurorider in Shadow Ghoul's, Chakra over both Graveyards",
+      "activated": "six rows after the bosses' (721, 36, 355, 68, 2068, 384): Magician of Black Chaos takes Dark Magician's handlers; Thousand Dragon Goddess of Whim's resolve with the once-per-turn prepare (its coin link doubles or halves ATK in card_stats.c and ends with the turn); Gaia and Super War-Lion a new check (a face-up foe with less ATK), Main Phase 1 only, Dream Clown's destroy, then DUEL_CMD_SET_CANNOT_ATTACK; FindCardEffect falls back to ExtraDeckFindCardEffect",
+      "triggers": "Bickuribox in ChangeBattlePosition's Dream Clown case (its row is Dream Clown's), Skull Guardian in the damage step's Suijin case and the link duel's question, reset each turn",
+      "cpu": "after the bosses: Magician of Black Chaos whenever it finds a target; Thousand Dragon in Attack Position; Gaia / Super War-Lion when the target is in Defense Position or the human has two or more monsters; a face-up Attack Position Bickuribox goes to Defense Position when the human has a face-up monster at least as strong (the original AI never moves a monster down)",
+      "data": "apply_gods.py --text 3, EXTRA_DECK_3T: 20 texts (Thousand Dragon has two arts), the materials or Ritual Magic card first; kinds unchanged (the Extra Deck)",
+      "table_check": "check_effect_table.py --boss-rows --extra-deck-rows: 437 rows, the 428 sorted ones unchanged"
+    },
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "32a5568d91a4142943bea7b71695df1083c281de",
+      "patch_bytes": 82537,
+      "patch_sha1": "66e707b0ca93e97a242db7b9fc1a8940003d9c54",
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs (the second cloned eds-decomp from GitHub)",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "fb19af44... had no CPU switch for Bickuribox"
+    },
+    "oracle_command": "tests/run_oracles.py <decomp> gods-3t-fx.gba --tributes 3 --effects --pack-viewer --god-rules --second-decks --deck-tuning --extra-deck-rituals --boss-effects --extra-deck-effects --control gods-3t.gba",
+    "suite_result": "219/219 against gods-3t: the 151 checks before plus 68 Extra Deck effect checks (48 played, 20 card texts); every control comparison as expected (17 not compared). The first full run was 218/219: the Extra Deck rituals' bounce check still expected no damage from Black Luster Soldier",
+    "oracles": "68 checks (48 played, 20 card texts), listed in the README's verification table; each effect check fails on gods-3t, the regressions (Dream Clown, Suijin, Goddess of Whim, Mechanical Spider, Kaiser against LIGHT, Twin-Headed Thunder Dragon on the CPU's turn, Gaia's refusals, the CPU attacking instead) pass there",
+    "check_changes": [
+      "the Goddess of Whim regression accepts either side of the coin: the pinned RNG state lands tails on the control build",
+      "the Extra Deck rituals' bounce check expects Black Luster Soldier's 2500 piercing damage on the bounced Hane-Hane with --extra-deck-effects (the first full run's only failure; the bounce itself worked)"
+    ],
+    "not_verified": [
+      "a real device",
+      "a full duel with these cards in a CPU deck (only Joey's Thousand Dragon, his second deck's B. Skull Dragon, Mako's Fortress Whale and Bakura's Dokurorider are in CPU decks)",
+      "a link duel (Skull Guardian's question for the partner is wired as Suijin's)"
+    ]
+  },
+  "cpu_extra_deck_monsters": {
+    "decisions": "the user asked to give the NPCs the Fusion and Ritual monsters too. Owners by fit with the deck; the large effects only from Tier 3 on (duelist IDs 1-5 Tier 1 ... 21-24 last); every one of the 15 monsters without a CPU owner got one; Yugi's regular deck left alone (the harness's test duels are against it), so Kaiser Dragon went to his second deck",
+    "data": "apply_gods.py --text 3, EXTRA_DECK_DECKS_3T: 38 one-for-one swaps in 14 decks (the deck region is full, 1168 of 1168 entries), each monster with Polymerization and the materials its deck lacked, or its Ritual Magic card; no card a DECK_TUNING_3T row changes, so 'before' is the original count; no added card is on the ban list",
+    "owners": {
+      "Yugi, 2nd deck": "Black Luster Soldier, Kaiser Dragon",
+      "Tristan, 2nd deck": "Garma Sword",
+      "Bakura, 2nd deck": "Chakra",
+      "Espa Roba": "Labyrinth Tank",
+      "Weevil": "Javelin Beetle",
+      "Mako": "Crab Turtle (and Fortress Whale)",
+      "Arkana": "Magician of Black Chaos",
+      "Umbra & Lumis": "Bickuribox",
+      "Kaiba": "Twin-Headed Thunder Dragon (and Blue-Eyes Ultimate Dragon)",
+      "Ishizu": "Skull Guardian",
+      "Shadi": "Skull Knight",
+      "Yami Bakura": "Zera The Mant",
+      "Yami Yugi": "Gaia the Dragon Champion",
+      "Simon": "Super War-Lion"
+    },
+    "cpu_spell_list": "gAiGenericSpells (0x08086394, 54 numbers) holds both Polymerizations and all nine Ritual Magic cards these monsters need",
+    "build": {
+      "patch": "gods-3t-fx.bps",
+      "rom_sha1": "cb359368fac23fd8ce446df6ba481d4e0a4013c5",
+      "patch_bytes": 82710,
+      "patch_sha1": "f8468603744ab30d99bfed61828cdf4a46ab1c59",
+      "reproduced": "the same SHA-1 and .bps from two fresh work dirs (the second cloned eds-decomp from GitHub)",
+      "other_builds_unchanged": "gods (2b905f01...), gods-3t (1cb038ed...) and gods-fx (7e74a01c...) rebuilt in the second work dir match their published SHA-1s",
+      "first_try": "06e8f86b... put Kaiser Dragon in Yugi's regular deck: the staged duels changed (see gotchas)"
+    },
+    "suite_result": "228/228 against gods-3t: the 219 checks before plus 9 CPU summon checks; every control comparison as expected (17 not compared). The first build (06e8f86b, Kaiser Dragon in Yugi's regular deck) failed dozens of unrelated checks in the affected suites: the staged duels are against that deck",
+    "oracles": [
+      "the 14 changed decks load card for card (deck-tuning and second-deck suites, from the checkout's deck_lists.json), Mako's Fusion Deck holds Crab Turtle and Fortress Whale",
+      "the CPU fuses Kaiser Dragon, Gaia the Dragon Champion, Twin-Headed Thunder Dragon, Labyrinth Tank, Bickuribox and Skull Knight from its hand (control: passes, the engine's own fusion)",
+      "the CPU performs Dark Magic Ritual, Black Luster Ritual and Novox's Prayer for the monster in its Fusion Deck (control: fails)"
+    ],
+    "seen_in_the_emulator": "with Level 4 or lower materials and an empty human field the CPU Normal Summons a material and attacks instead of fusing (the original turn plan); with the human's Blue-Eyes out it fuses or performs the Ritual",
+    "not_verified": [
+      "a real device",
+      "full duels against the changed decks"
+    ]
+  }
+}

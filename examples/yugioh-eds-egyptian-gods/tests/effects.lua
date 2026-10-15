@@ -1,0 +1,180 @@
+-- Oracle setup for the God effects. From the duel_main1 state (player's turn 1, Main Phase 1), stages the
+-- field from environment variables, then logs the state on every change while the input script plays:
+--   P_ZONES / C_ZONES  the player's / CPU's monster and spell-trap zones: "zone:id[:flags]" items, comma
+--                      separated; flags: d = Defense Position, s = set (face down), a = may be activated
+--                      (spell/trap canActivate), e = its once-per-turn effect unused (as a monster just
+--                      summoned), u = used. Zones 0-4 are monsters, 5-9 spells/traps.
+--   P_HAND / C_HAND    card IDs for the first hand slots; P_HANDN / C_HANDN set the hand size.
+--   P_GRAVE / C_GRAVE  card IDs for the graveyard, bottom first (replaces it).
+--   P_LP / C_LP        Life Points.
+--   C_DECK / P_DECK    card IDs written over the CPU's / player's whole deck, cycling through the list (its size
+--                      stays), so a search or a recruit finds them.
+--   P_FUSION / C_FUSION  card IDs for the Fusion Deck (replaces it).
+--   PIN_RNG            an RNG state (hex) written at frame 1 (gMain's first word), for a coin toss.
+-- Each log line: the monster zones (card IDs, "s" after a face-down one), LP, hand and graveyard sizes, and
+-- the zone links of every monster that has any, as kind/count=value (Ra's paid LP is kind 14, Slifer's drain
+-- kind 12 count 10, a pad kind 15), plus "noatk" while a monster has its cannot-attack flag; then the Fusion
+-- Decks' card IDs, "fusion P{...} C{...}". A coin toss scene logs "coin heads" or "coin tails" (one word per
+-- coin) when it starts.
+local P = { [0] = 0x020192E4, [1] = 0x020192E4 + 0xD64 }   -- gDuelPlayers[0], [1]
+local ZONES, ZONE_SIZE, HAND, GRAVE, DECK, FUSION = 0x28, 0x94, 0x684, 0x904, 0x7C4, 0xA44
+local frame, last = 0, ""
+
+local function env(name)
+    local v
+    pcall(function() v = os.getenv(name) end)
+    if v == "" then v = nil end
+    return v
+end
+
+local function setzone(player, zone, id, flags)
+    local a = P[player] + ZONES + zone * ZONE_SIZE
+    emu:write32(a, (emu:read32(a) & ~0x1FFF) | id | (player == 1 and 0x1000 or 0))
+    local f6 = emu:read8(a + 6) & ~0x3
+    if not flags:find("s") then f6 = f6 | 0x2 end           -- face up
+    if flags:find("d") or (zone <= 4 and flags:find("s")) then f6 = f6 | 0x1 end
+    emu:write8(a + 6, f6)
+    if flags:find("a") then emu:write8(a + 0x91, emu:read8(a + 0x91) | 0x4) end
+    if flags:find("e") then emu:write8(a + 7, emu:read8(a + 7) | 0x20) end          -- effectUnused
+    if flags:find("u") then emu:write8(a + 7, emu:read8(a + 7) & ~0x20) end
+end
+
+local function stage(player, spec)
+    if not spec then return end
+    for item in spec:gmatch("[^,]+") do
+        local zone, id, flags = item:match("^(%d+):(%d+):?(%a*)$")
+        setzone(player, tonumber(zone), tonumber(id), flags or "")
+    end
+end
+
+local function hand(player, spec, n)
+    if spec then
+        local i = 0
+        for id in spec:gmatch("%d+") do
+            local a = P[player] + HAND + i * 4
+            emu:write32(a, (emu:read32(a) & ~0x1FFF) | tonumber(id) | (player == 1 and 0x1000 or 0))
+            i = i + 1
+        end
+    end
+    if n then emu:write8(P[player] + 2, tonumber(n)) end
+end
+
+local function deck(player, spec)
+    if not spec then return end
+    local ids = {}
+    for id in spec:gmatch("%d+") do ids[#ids + 1] = tonumber(id) end
+    for i = 0, emu:read8(P[player] + 3) - 1 do
+        local a = P[player] + DECK + i * 4
+        emu:write32(a, (emu:read32(a) & ~0x1FFF) | ids[i % #ids + 1] | (player == 1 and 0x1000 or 0))
+    end
+end
+
+local function grave(player, spec)
+    if not spec then return end
+    local n = 0
+    for id in spec:gmatch("%d+") do
+        emu:write32(P[player] + GRAVE + n * 4, tonumber(id) | (player == 1 and 0x1000 or 0))
+        n = n + 1
+    end
+    emu:write8(P[player] + 4, n)
+end
+
+local function fusion(player, spec)
+    if not spec then return end
+    local n = 0
+    for id in spec:gmatch("%d+") do
+        emu:write32(P[player] + FUSION + n * 4, tonumber(id) | (player == 1 and 0x1000 or 0))
+        n = n + 1
+    end
+    emu:write8(P[player] + 5, n)
+end
+
+local function fusionIds(player)
+    local t = {}
+    for i = 0, emu:read8(P[player] + 5) - 1 do t[#t + 1] = tostring(emu:read32(P[player] + FUSION + i * 4) & 0xFFF) end
+    return table.concat(t, ",")
+end
+
+local function side(player)
+    local ids, links = {}, {}
+    for z = 0, 4 do
+        local a = P[player] + ZONES + z * ZONE_SIZE
+        local id = emu:read32(a) & 0xFFF
+        ids[#ids + 1] = tostring(id) .. ((id ~= 0 and (emu:read8(a + 6) & 0x2) == 0) and "s" or "")
+        if id ~= 0 then
+            local n, l = emu:read16(a + 0x8A), {}
+            for i = 0, n - 1 do
+                local kind = emu:read16(a + 0x4A + i * 2)
+                l[#l + 1] = string.format("%d/%d=%d", kind & 0xFF, kind >> 8, emu:read16(a + 0x0A + i * 2))
+            end
+            local s = table.concat(l, " ")
+            if (emu:read8(a + 0x8C) & 0x10) ~= 0 then s = s .. " noatk" end
+            if s ~= "" then links[#links + 1] = string.format("%d[%s]", z, s) end
+        end
+    end
+    return table.concat(ids, ","), table.concat(links, " ")
+end
+
+-- Card Detail: once its description box is in the BG3 map buffer (gMain.bgMapBuffer[4], cell (13, 4) = tile
+-- 0x248), "detail id=ID found=N": N is the yellow (colour 6) pixels left on the text canvas, which the "Found
+-- in" paragraph draws and the description (colour 7, shadow 9) doesn't.
+local DETAIL_ID, DESC_CELL, CANVAS = 0x02013D92, 0x0300245C + (4 * 32 + 13) * 2, 0x02000000
+local shownDetail = -1
+local function logDetail(say)
+    local id = emu:read16(DETAIL_ID)
+    if emu:read16(DESC_CELL) ~= 0x248 or id == 0 then
+        shownDetail = -1
+        return
+    end
+    if id == shownDetail then return end
+    shownDetail = id
+    local n = 0
+    for i = 0, 18 * 24 * 64 - 1 do
+        if emu:read8(CANVAS + i) == 6 then n = n + 1 end
+    end
+    say(string.format("detail id=%d found=%d", id, n))
+end
+
+-- gDuelScene: id (bits 0-14) at +4, arg at +6. The coin toss (id 0): bits 8-14 the coin count, bit i the face
+-- of coin i (1 = tails).
+local SCENE = 0x02017A30
+local lastCoin
+local function logCoin(say)
+    local arg = emu:read16(SCENE + 6)
+    if lastCoin == nil then lastCoin = arg end         -- whatever the duel's start left there
+    if (emu:read16(SCENE + 4) & 0x7FFF) ~= 0 or (arg & 0x7F00) == 0 or arg == lastCoin then return end
+    lastCoin = arg
+    local faces = {}
+    for i = 0, ((arg >> 8) & 0x7F) - 1 do faces[#faces + 1] = ((arg >> i) & 1) == 1 and "tails" or "heads" end
+    say("coin " .. table.concat(faces, " "))
+end
+
+callbacks:add("frame", function()
+    frame = frame + 1
+    if frame == 1 then
+        stage(0, env("P_ZONES"))
+        stage(1, env("C_ZONES"))
+        hand(0, env("P_HAND"), env("P_HANDN"))
+        hand(1, env("C_HAND"), env("C_HANDN"))
+        grave(0, env("P_GRAVE"))
+        grave(1, env("C_GRAVE"))
+        deck(1, env("C_DECK"))
+        deck(0, env("P_DECK"))
+        fusion(0, env("P_FUSION"))
+        fusion(1, env("C_FUSION"))
+        if env("P_LP") then emu:write16(P[0], tonumber(env("P_LP"))) end
+        if env("C_LP") then emu:write16(P[1], tonumber(env("C_LP"))) end
+        if env("PIN_RNG") then emu:write32(0x03000040, tonumber(env("PIN_RNG"), 16)) end   -- gMain's RNG state
+    end
+    local pz, pl = side(0)
+    local cz, cl = side(1)
+    local s = string.format("P %s C %s LP %d %d hand %d %d grave %d %d links P{%s} C{%s} fusion P{%s} C{%s}", pz, cz,
+        emu:read16(P[0]), emu:read16(P[1]), emu:read8(P[0] + 2), emu:read8(P[1] + 2),
+        emu:read8(P[0] + 4), emu:read8(P[1] + 4), pl, cl, fusionIds(0), fusionIds(1))
+    if s ~= last then
+        console:log(string.format("f%d %s", frame, s))
+        last = s
+    end
+    logDetail(function(line) console:log(string.format("f%d %s", frame, line)) end)
+    logCoin(function(line) console:log(string.format("f%d %s", frame, line)) end)
+end)
