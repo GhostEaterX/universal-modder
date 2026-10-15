@@ -214,6 +214,10 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **Checks:** 8 oracles read the CPU's deck and Fusion Deck after `LoadOpponentDeck` and compare them, sorted,
   with the checkout's `deck_lists.json`. The five second decks fail on the build without the change; Tea at 9
   wins, Rex (no second deck) and Kaiba at 10 wins pass on both.
+- **The 10th-win line:** the game already shows a special line on the 10th win against each duelist
+  (`gOpponentResultTexts[duelist].win10th`, picked while the record still says 9). Appending a `$c$p` page to
+  those five dialogue records (fixed 0x304 bytes each) lets the duelist announce the new deck, as a data
+  edit. To test dialogue, follow the printer pointer (`gBustup.textBox.text`) to the record's NUL.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

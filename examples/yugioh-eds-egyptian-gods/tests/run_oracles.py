@@ -26,7 +26,8 @@ checks also run on a control ROM, where each check says what must happen there:
     every rule check must fail there, and the regressions must pass;
   - with --second-decks, the same control for the Tier 1 duelists' second decks (npc_deck.lua): a duelist
     beaten 10 times must play the second deck, which the control never loads, and the other decks must be
-    the same as there. The expected decks come from the checkout's own deck_lists.json.
+    the same as there. The expected decks come from the checkout's own deck_lists.json. Their 10th-win lines
+    (dialogue.lua) must be shown to their new last page, and the other result lines must be as there.
 A check with a control key list (ckeys) plays those keys on the control instead, where the menus differ.
 That proves each check can fail. Needs the harness set up natively (EDS_NATIVE=1, MGBA_PREFIX).
 """
@@ -122,6 +123,7 @@ GODS = ("817", "818", "819")
 PV = "pack_viewer.lua"
 # duel_turn2 -> Battle Phase, Blue-Eyes attacks the CPU at 1 LP, A through the win: the pick screen by f2000
 WIN_KEYS = "20 B; 80 A; 380 A; 430 RIGHT; 470 A; 560 A; 650 A; 750 A; 1300-1960/60 A"
+DIALOGUE_KEYS = WIN_KEYS.replace("1300-1960/60 A", "1300-2640/60 A")   # the win, then A through the texts
 PIN = {"PIN_RNG": "1234ABCD"}
 VANILLA_PACK = r"generated pack=2 cards=79,177,339,154,117"   # Vol.2 from RNG state 0x1234ABCD
 
@@ -283,6 +285,18 @@ def cpu_deck_re(which, duelist):
 
 
 TIER1 = ((1, "Yugi"), (2, "Tea"), (3, "Joey"), (4, "Tristan"), (5, "Bakura"))
+# gOpponentResultTexts[duelist].win10th: the line after the player's 10th win
+WIN10TH = {1: 1017, 2: 2017, 3: 3017, 4: 4017, 5: 5016, 6: 6016}
+
+
+def dialogue_re(event, wins):
+    """dialogue.lua's log once the record `event` has been printed to the end of its text in the checkout's
+    dialogue.json (so every page was shown), and the record after the duel."""
+    def regex(decomp):
+        with open(decomp / "assets/text/dialogue.json") as f:
+            text = next(r["text"] for r in json.load(f) if r["event"] == event)
+        return rf"dialogue event={event} end={len(text.encode('ascii'))}\n[\s\S]*record wins={wins}\b"
+    return regex
 
 
 def second_decks_suite():
@@ -294,6 +308,13 @@ def second_decks_suite():
         check("second decks: Rex at 10 wins keeps his deck", control="passes", **deck("opponent_decks", 6, 10)),
         check("second decks: Kaiba at 10 wins keeps his deck", control="passes",
               **deck("opponent_decks", 16, 10)),
+    ] + [check(f"second decks: {name}'s 10th-win line, to its end", "dialogue.lua", "duel_turn2", 2700,
+               DIALOGUE_KEYS, {"OPP": str(opp), "WINS": "9"}, dialogue_re(WIN10TH[opp], 10))
+         for opp, name in TIER1] + [
+        check("second decks: Tea's 11th win, her usual line", "dialogue.lua", "duel_turn2", 2700, DIALOGUE_KEYS,
+              {"OPP": "2", "WINS": "10"}, dialogue_re(2014, 11), control="passes"),
+        check("second decks: Rex's 10th-win line as before", "dialogue.lua", "duel_turn2", 2700, DIALOGUE_KEYS,
+              {"OPP": "6", "WINS": "9"}, dialogue_re(WIN10TH[6], 10), control="passes"),
     ]
 
 

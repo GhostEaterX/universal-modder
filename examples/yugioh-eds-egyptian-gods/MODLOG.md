@@ -356,3 +356,22 @@
   - the whole `gods-3t-fx` suite is 70/70 (18 effect, 15 base, 16 viewer, 13 rules and Deck Edit, 8 second
     decks) against `gods-3t`, every control comparison as expected;
   - `gods-3t-fx` is `637b7bd6...` from two fresh work dirs; `gods-3t` and `gods-fx` rebuild unchanged.
+
+## 2026-10-15: the 10th-win lines (in `gods-3t-fx`)
+- **User's ask:** after the 10th win against one of the five, the duelist says something like "I better find
+  some new cards and train more", the moment their second deck switches on.
+- **Found:** the game already has a 10th-win line per duelist. `Campaign_ShowDuelResult` picks
+  `gOpponentResultTexts[opp].win10th` (`0x080817FC`, 16 bytes per duelist) when the record still says 9;
+  `Campaign_GiveRewards` then records the win. So the line shows exactly when the second deck switches on. The
+  events are 1017, 2017, 3017, 4017 and 5016 (Bakura's isn't X017; read from the ROM table, not guessed).
+- **The change:** data only. Dialogue records are a fixed 0x304 bytes (`text[0x300]`, the longest original
+  341), so `apply_gods.py --text 3` appends `$c$p` and a new page to those five texts in `text/dialogue.json`.
+  The ROM differs from the second-deck build in those five records only (468 bytes).
+- **Wording:** the user's sentence on every page, with a short lead-in that answers the duelist's own last
+  page and a "next time" in their voice. The longest page in the game is 127 characters; the new ones are
+  79-103, and the screenshots show them inside the box (Joey's and Tristan's use all four lines).
+- **Harness:** `dialogue.lua` wins at once from `duel_turn2` against `OPP` with the record at `WINS`, and
+  follows the printer (`gBustup.textBox.text`, `0x020147A0`) through the record at `gMain.dialogueIndex`. It
+  logs the event and the offset when the printer reaches the NUL: the whole line, every page, was shown.
+  Seven checks: the five lines to their new end (they fail on the build without the lines), Tea's 11th win
+  (her usual line) and Rex's 10th-win line (unchanged).

@@ -35,7 +35,9 @@ can own but never use. This mod makes them real monsters, for you and for the CP
   duelists you can face from the start (Yugi, Tea, Joey, Tristan and Bakura), but never loads it. Beat one of
   them 10 times (the wins on the opponent-select screen) and from the next duel on they play their second
   deck: Yugi brings the Magnet Warriors and Valkyrion, Joey B. Skull Dragon and Red-Eyes Black Metal Dragon,
-  and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole.
+  and the others more Magic and Trap cards like Mirror Force, Raigeki and Dark Hole. After that 10th win,
+  their usual 10th-win line gets a new last page that says so: "I better find some new cards and train
+  more."
 - **Deck building:** up to one copy of each God per deck (the original ban list allowed zero).
 - **Getting them:** the password screen gives one copy each, using the TCG passwords: Obelisk `10000000`,
   Slifer `10000020`, Ra `10000010`. The booster packs that already contained them (Obelisk in *The Final
@@ -122,8 +124,9 @@ tested ROMs byte for byte:
 - `gods.gba`: SHA-1 `2b905f0111c72fd45fa0745e9c4c9c02b20645e7`;
 - `gods-3t.gba`: SHA-1 `1cb038eda3c657e4f06547adce7f775ce38b9cfa`;
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
-- `gods-3t-fx.gba`: SHA-1 `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`, with the summon rules, the pack
-  viewer, Found in and the second decks. Earlier versions:
+- `gods-3t-fx.gba`: SHA-1 `8710dd2f4335187d5254c7a44ede052e11af77a1`, with the summon rules, the pack
+  viewer, Found in, the second decks and their 10th-win lines. Earlier versions:
+  - `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`: the second decks without the new lines;
   - `27007baa47952ebfe051c3f1eaa399eef011ef99`: before the second decks; the user checked the summon rules on
     it in Delta;
   - `000ae97d786f1d922dd31a8d74f38a5e1ab9ae36`: the first pack viewer;
@@ -237,6 +240,24 @@ own: each second deck keeps 25 to 32 of the first deck's cards and adds these.
 | Bakura | Blast Sphere, Needle Worm ×2, Witch of the Black Forest ×2; Mirror Force, Premature Burial, Weather Control |
 
 No second deck goes over the ban list, so `RemoveOverLimitDeckCards` loads each one whole.
+
+**The 10th-win line.** After a duel, `Campaign_ShowDuelResult` picks the opponent's line from
+`gOpponentResultTexts`, and the game already has one for your 10th win against each duelist (`win10th`, shown
+when the record still says 9, just before it becomes 10). `apply_gods.py --text 3` adds a last page to the
+five Tier 1 duelists' 10th-win lines, so the duelist announces the switch at the moment it happens. Each line
+keeps the game's own pages; only the last page is new:
+
+| Duelist (dialogue event) | The new last page |
+|---|---|
+| Yugi (1017) | "I better find some new cards and train more. Next time, I'll be ready for you!" |
+| Tea (2017) | "Just kidding! I better find some new cards and train more. Next time, I'm going to win!" |
+| Joey (3017) | "Nah, forget that! I better find some new cards and train more. Next time, ya won't know what hit ya!" |
+| Tristan (4017) | "Then again... I better find some new cards and train more. Next time, I'm not going easy on you!" |
+| Bakura (5016) | "I better find some new cards and train more. Next time, I'll give you a real challenge." |
+
+Dialogue records are a fixed 0x304 bytes (`{u16 event; u16 speaker; char text[0x300]}`), so a longer text moves
+nothing: the ROM differs from the build without the lines in those five records only. `$c$p` is the game's own
+"wait for A, new page" code.
 
 ### How the pack viewer works
 `scripts/patch_pack_viewer.py` runs in the `gods-3t-fx` build only. It copies `src/pack_viewer.c` into
@@ -409,6 +430,19 @@ Deck once they are loaded. The expected lists come from your own `deck_lists.jso
 | Rex at 10 wins (no second deck): his deck | pass | pass |
 | Kaiba at 10 wins: his deck, with Obelisk | pass | pass |
 
+For the 10th-win lines, `dialogue.lua` wins a duel at once against the duelist with the record at 9 and
+follows the dialogue printer (`gBustup.textBox.text`) through the record on screen. A check passes when the
+printer reaches the end of the line in your `dialogue.json`, so every page was shown, and the record then
+says 10.
+
+| Check (`gods-3t-fx.gba`) | Build with the lines | Build without them |
+|---|---|---|
+| Yugi, Tea, Joey, Tristan and Bakura: the 10th-win line is shown to the end of its new page, then the record is 10 | pass | fails (the line ends before the new page) |
+| Tea's 11th win: her usual win line | pass | pass |
+| Rex's 10th-win line, as before | pass | pass |
+
+All five new pages fit the text box, checked on screenshots; Joey's and Tristan's take all four of its lines.
+
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. Not yet checked for the second decks: a real device,
 and reaching 10 wins by playing (the tests set the record).
@@ -433,8 +467,9 @@ Also checked:
   them.
 - **The odds are rounded** to 0.1% (0.01% below 1%). They are the chance for the next pack you pick; the
   pity counter changes after each pack.
-- **The second decks come without a notice:** nothing on screen says that a duelist switched decks. A
-  record only grows, so once a duelist has 10 wins they keep the second deck.
+- **The 10th-win line comes once:** it is shown when your record against the duelist goes from 9 to 10. A
+  save that is already past 10 wins gets the second deck without the line. A record only grows, so once a
+  duelist has 10 wins they keep the second deck.
 - **A little lag:** drawing the pack name costs about 1 frame when the pick screen opens and when the
   covers stop sliding.
 - **The TCG summon rules are not in `gods-fx`:** there a Special Summoned Obelisk or Slifer stays, and Ra can

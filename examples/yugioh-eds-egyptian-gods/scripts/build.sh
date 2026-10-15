@@ -11,7 +11,8 @@
 #     be Special Summoned; Deck Edit sorts and filters the Gods as monsters;
 #   - the pack viewer: on the pick-a-pack screen after a duel, SELECT lists the centre pack's cards and each
 #     card's chance of being in the pack; Card Detail outside duels names the packs that hold the card.
-#   - the Tier 1 duelists' second decks (never loaded by the original game), once you've beaten them 10 times.
+#   - the Tier 1 duelists' second decks (never loaded by the original game), once you've beaten them 10 times,
+#     and a last page for their 10th-win lines that says so.
 # The .bps is the only thing to share. All four variants can live in the same work dir.
 #
 # Needs git, python3, and eds-decomp's native toolchain on PATH: run eds-decomp's tools/setup_native.sh once,
@@ -49,8 +50,8 @@ mkdir -p "$WORK/vanilla/roms"
 cp "$ROM" "$WORK/vanilla/roms/base_eng.gba"
 (cd "$WORK/vanilla" && tools/dr make setup)
 
-# 3. The data: stats, passwords, ban list, NPC decks (and with --effects the Gods' card text). Both trees get
-#    the same assets.
+# 3. The data: stats, passwords, ban list, NPC decks (and with --effects the Gods' card text; for gods-3t-fx
+#    also the 10th-win lines). Both trees get the same assets.
 # shellcheck disable=SC2086
 python3 "$HERE/apply_gods.py" "$WORK/vanilla" $TEXT
 rm -rf "$WORK/$MOD/assets" "$WORK/$MOD/roms"

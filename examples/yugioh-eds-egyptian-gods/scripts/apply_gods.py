@@ -15,6 +15,9 @@ names card numbers and rewrites the extracted CSV/JSON files in place:
                                             place of their flavour text, saying 2 or 3 Tributes; with 3, also
                                             the summon rules that patch_god_rules.py builds. Each text is a
                                             fixed 480-byte record, so nothing moves
+  - text/dialogue.json                      with --text 3: a new last page for the 10th-win lines of the
+                                            five duelists that switch to their second deck then
+                                            (patch_second_decks.py). Each record is a fixed 0x304 bytes
 
 The C side (Divine counts as a monster type, Obelisk stops being a Ritual) is patches/eds-decomp.diff.
 Stdlib only; Python 3.8+.
@@ -54,6 +57,19 @@ RULES_TEXT_3T = {
     RA: ("", "Cannot be Special Summoned. "),      # (after the effect text, before it)
 }
 TEXT_RECORD = 0x1E0
+# The three-Tribute effects build also switches Yugi, Tea, Joey, Tristan and Bakura to their second deck after
+# the player's 10th win against them (patch_second_decks.py). Their 10th-win line (gOpponentResultTexts[duelist]
+# .win10th, shown when the record still says 9 wins) gets a new last page that says so.
+# dialogue event -> (speaker = duelist ID, the new page)
+SECOND_DECK_PAGES = {
+    1017: (1, "I better find some new cards and train more. Next time, I'll be ready for you!"),
+    2017: (2, "Just kidding! I better find some new cards and train more. Next time, I'm going to win!"),
+    3017: (3, "Nah, forget that! I better find some new cards and train more. Next time, ya won't know what hit ya!"),
+    4017: (4, "Then again... I better find some new cards and train more. Next time, I'm not going easy on you!"),
+    5016: (5, "I better find some new cards and train more. Next time, I'll give you a real challenge."),
+}
+PAGE_BREAK = "$c$p"                 # wait for A, then a new page (the game's own code for it)
+DIALOGUE_TEXT = 0x300               # text bytes per dialogue record, NUL included
 # opponent deck index (= duelist ID) -> (card number given up, God given). Deck sizes stay the same, so
 # the 0x920-byte deck region still fits.
 DECK_SWAPS = {
@@ -206,6 +222,27 @@ def main():
             if data[card_id] != text:
                 changes.append(f"text {name}: {len(text)} characters")
                 data[card_id] = text
+        if not args.check:
+            path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+    # The 10th-win lines (three-Tribute effects build only).
+    if args.text == 3:
+        path = assets / "text" / "dialogue.json"
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        if json.dumps(data, ensure_ascii=False, indent=1) + "\n" != raw:
+            sys.exit(f"{path}: unexpected formatting, refusing to rewrite it")
+        by_event = {r["event"]: r for r in data}
+        for event, (speaker, page) in SECOND_DECK_PAGES.items():
+            r = by_event.get(event)
+            if r is None or r["speaker"] != speaker:
+                sys.exit(f"dialogue {event}: not duelist {speaker}'s line (not the USA ROM?)")
+            if r["text"].endswith(PAGE_BREAK + page):
+                continue
+            r["text"] += PAGE_BREAK + page
+            if len(r["text"].encode("ascii")) >= DIALOGUE_TEXT:
+                sys.exit(f"dialogue {event}: the text is longer than its {DIALOGUE_TEXT}-byte record")
+            changes.append(f"dialogue {event} (duelist {speaker}): a new last page")
         if not args.check:
             path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
 
