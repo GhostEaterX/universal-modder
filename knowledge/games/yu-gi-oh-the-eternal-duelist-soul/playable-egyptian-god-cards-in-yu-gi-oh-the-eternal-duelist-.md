@@ -249,6 +249,7 @@ the centre pack, and SELECT lists its cards with each card's chance of being in 
 - **Checks:** the CPU's rituals in its Fusion Deck, Deck Edit's filing and refusal, the save move, both
   players' Ritual Summons from the Fusion Deck, a bounce back to it, Senju and Cyber-Stein fail on the old
   build; a ritual from the hand and a Normal monster to the Side Deck still work.
+- **On a real device:** the user tested this build in Delta on iOS: it works.
 
 ## Gotchas
 1. **A naive modded build boots into a broken game.**

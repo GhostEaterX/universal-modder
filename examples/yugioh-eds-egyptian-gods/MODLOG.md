@@ -470,3 +470,6 @@
     control comparison as expected;
   - `gods-3t-fx` is `9372e6d5...` (`.bps` 74,253 bytes), the same ROM and `.bps` from two fresh work dirs;
   - `gods-3t` and `gods-fx` rebuild unchanged; pytest, `um kb check --index` and `um publish check .` pass.
+
+## 2026-10-15: Extra Deck rituals on a real device
+- **Delta on iOS (user's test):** `gods-3t-fx` `9372e6d5...` (the Ritual monsters in the Extra Deck) works.

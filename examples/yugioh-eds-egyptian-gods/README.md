@@ -145,7 +145,7 @@ tested ROMs byte for byte:
 - `gods-fx.gba`: SHA-1 `7e74a01ce70057d515dadd267ad7fdba93b89d99`;
 - `gods-3t-fx.gba`: SHA-1 `9372e6d50a857a1131e0c72785f5ae16bf53a486`, with the summon rules, the pack
   viewer, Found in, the second decks, their 10th-win lines, the CPU deck tuning and the Ritual monsters in the
-  Extra Deck. Earlier versions:
+  Extra Deck; the user ran it in Delta. Earlier versions:
   - `2082fb6fd7f0b9becc9f0ef7f3c80371e0f62f88`: before the Extra Deck rituals; the user ran it in Delta;
   - `8710dd2f4335187d5254c7a44ede052e11af77a1`: before the deck tuning; the user ran it in Delta;
   - `637b7bd60fb9a73710bdabc2ad759e9eb1ca0e8d`: the second decks without the new lines;
@@ -605,7 +605,8 @@ so the game boots from it.
 
 Also played for the Extra Deck: the summon and the bounce on screenshots (the card flies to and from the
 Fusion Deck pile), and Deck Edit's statement, which counts the Main Deck at 40 and the Fusion Deck at 1. On
-the old build, To Trunk does nothing for a ritual in the saved Fusion Deck.
+the old build, To Trunk does nothing for a ritual in the saved Fusion Deck. On a real device, the user
+tested this build in Delta on iOS: it works.
 
 Also played: Joey's second deck through a whole duel against a player who only ends turns. The CPU summoned
 Tiger Axe, Sinister Serpent and Dragon Zombie and won. On a real device, the user tested this build (with the

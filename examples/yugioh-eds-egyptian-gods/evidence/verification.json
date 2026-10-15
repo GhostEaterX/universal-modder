@@ -712,10 +712,16 @@
       "npc_deck.lua race found and fixed: the CPU's shuffle spans frames, and the first full run read Kaiba's deck mid-swap; it now logs once two frames hold the same cards"
     ],
     "not_verified": [
-      "a real device",
       "Gale Dogra sending a ritual to the Graveyard (it lists every Fusion Deck card, unchanged code)",
       "a Link Battle",
       "every ritual recipe: Black Illusion Ritual was played for the player and the CPU; the others share the same code and table"
-    ]
+    ],
+    "real_device": {
+      "emulator": "Delta (iOS)",
+      "by": "the user",
+      "date": "2026-10-15",
+      "patch": "gods-3t-fx.bps (9372e6d5...)",
+      "result": "works"
+    }
   }
 }
